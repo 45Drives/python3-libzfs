@@ -1,0 +1,3 @@
+# Default APT sources.list for TrueNAS SCALE
+deb [trusted=yes] http://apt.tn.ixsystems.com/apt-direct/unstable/truenas/ truenas main
+deb [trusted=yes] http://apt.tn.ixsystems.com/apt-direct/unstable/debian/ bullseye main

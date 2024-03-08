@@ -1,0 +1,26 @@
+PYTHON ?= python3
+PREFIX ?= /usr/local
+
+PXIS = \
+	converter.pxi \
+	nvpair.pxi \
+	pxd/config.pxi \
+	pxd/sendflags.pxi
+
+PXDS = \
+	pxd/libzfs.pxd \
+	pxd/nvpair.pxd \
+	pxd/types.pxd \
+	pxd/zfs.pxd
+
+build: libzfs.c
+
+libzfs.c: libzfs.pyx ${PXIS} ${PXDS}
+	rm -f libzfs.c
+	${PYTHON} setup.py build
+
+clean:
+	rm -rf build libzfs.c
+
+install:
+	${PYTHON} setup.py install --prefix ${PREFIX}

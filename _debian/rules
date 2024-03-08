@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+#export DH_VERBOSE = 1
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export PYBUILD_NAME=libzfs
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_configure:
+	./configure --prefix=/usr
+	dh_auto_configure
+
+override_dh_install:
+	mkdir -p debian/usr/share/py-libzfs
+	dh_install ./libzfs.c usr/share/py-libzfs/
+	dh_install
