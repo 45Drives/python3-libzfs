@@ -24,7 +24,7 @@ make
 
 %install
 mkdir -p %{buildroot}/lib64/python3.6/site-packages/
-make DESTDIR=%{buildroot} install
+make PREFIX=%{buildroot} install
 mkdir -p %{buildroot}/usr/share/py-libzfs
 install -m 644 libzfs.c %{buildroot}/usr/share/py-libzfs/libzfs.c
 
