@@ -24,6 +24,8 @@ make
 
 %install
 make DESTDIR=%{buildroot} install
+mkdir -p %{buildroot}/usr/share/py-libzfs
+install -m 644 libzfs.c %{buildroot}/usr/share/py-libzfs/libzfs.c
 
 %changelog
 * Fri Mar 08 2024 Jordan Keough <jkeough@45drives.com> 0.1.0-1
