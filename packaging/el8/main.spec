@@ -18,6 +18,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 %setup -q
 
 %build
+pip3 install Cython==0.29.37
 ./configure --prefix=/usr
 make
 
