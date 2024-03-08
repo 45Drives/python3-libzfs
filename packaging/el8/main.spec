@@ -23,7 +23,8 @@ pip3 install Cython==0.29.37
 make
 
 %install
-make PREFIX=%{buildroot} install
+mkdir -p %{buildroot}/lib64/python3.6/site-packages/
+make DESTDIR=%{buildroot} install
 mkdir -p %{buildroot}/usr/share/py-libzfs
 install -m 644 libzfs.c %{buildroot}/usr/share/py-libzfs/libzfs.c
 
