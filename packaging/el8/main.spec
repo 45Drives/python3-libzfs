@@ -20,10 +20,10 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 %build
 pip3 install Cython==0.29.37
 ./configure --prefix=/usr
-make
+make PYTHONPATH=/usr/lib/python3.6/site-packages
 
 %install
-make DESTDIR=%{buildroot} install
+make DESTDIR=%{buildroot} install PYTHONPATH=/usr/lib/python3.6/site-packages
 mkdir -p %{buildroot}/usr/share/py-libzfs
 install -m 644 libzfs.c %{buildroot}/usr/share/py-libzfs/libzfs.c
 
