@@ -23,7 +23,7 @@ pip3 install Cython==0.29.37
 make
 
 %install
-make PREFIX=%{buildroot}/usr/local install
+make install
 
 %changelog
 * Fri Mar 08 2024 Jordan Keough <jkeough@45drives.com> 0.1.0-1
