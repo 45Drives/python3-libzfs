@@ -12,7 +12,7 @@
     "licence": "GPL-3.0+",
     "architecture": {
         "deb": "all",
-        "el": "noarch"
+        "el": "x86_64"
     },
     "description": {
         "long": "python libzfs",
