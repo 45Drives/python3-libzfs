@@ -25,6 +25,8 @@ make
 %install
 python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
 
+%files -f INSTALLED_FILES
+
 %changelog
 * Fri Mar 08 2024 Jordan Keough <jkeough@45drives.com> 0.1.0-1
 - initial release
