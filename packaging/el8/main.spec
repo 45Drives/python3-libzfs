@@ -23,10 +23,7 @@ pip3 install Cython==0.29.35
 make
 
 %install
-mkdir -p %{buildroot}/lib64/python3.6/site-packages/
-make PREFIX=%{buildroot} install
-mkdir -p %{buildroot}/usr/share/py-libzfs
-install -m 644 libzfs.c %{buildroot}/usr/share/py-libzfs/libzfs.c
+python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
 
 %changelog
 * Fri Mar 08 2024 Jordan Keough <jkeough@45drives.com> 0.1.0-1
