@@ -25,12 +25,12 @@ then :
   alias -g '${1+"$@"}'='"$@"'
   setopt NO_GLOB_SUBST
 else $as_nop
-  case $(((set -o) 2>/dev/nul)) in #(
+  case `(set -o) 2>/dev/null` in #(
   *posix*) :
     set -o posix ;; #(
   *) :
      ;;
-  esac
+esac
 fi
 
 
