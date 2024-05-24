@@ -1,0 +1,5 @@
+python3-libzfs (0.1.0-2focal) focal; urgency=medium
+
+  * updating for jammy
+
+ -- Jordan Keough <jkeough@45drives.com>  Fri, 24 May 2024 07:58:43 -0300

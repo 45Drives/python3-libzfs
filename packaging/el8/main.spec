@@ -28,5 +28,7 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %files -f INSTALLED_FILES
 
 %changelog
+* Fri May 24 2024 Jordan Keough <jkeough@45drives.com> 0.1.0-2
+- updating for jammy
 * Fri Mar 08 2024 Jordan Keough <jkeough@45drives.com> 0.1.0-1
 - initial release
