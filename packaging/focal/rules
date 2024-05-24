@@ -17,7 +17,7 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
 override_dh_auto_configure:
 	@echo "Running configure script..."
-	./configure
+	CFLAGS="-I/usr/include/zfs" ./configure
 	@echo "Configure script completed."
 
 override_dh_auto_build:
