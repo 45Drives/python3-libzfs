@@ -2,7 +2,15 @@ Source: ::package_name::
 Section: ::package_category::
 Priority: ::package_priority::
 Maintainer: ::package_author::
-Build-Depends: debhelper-compat (= 13), python3-all, python3-setuptools, dh-python
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               cython3,
+               libnvpair3,
+               libuutil3,
+               libzfs5,
+               libzfs5-devel,
+               python3-all-dev,
+               python3-setuptools
 Standards-Version: 4.4.1
 X-Python3-Version: >= 3.6
 Homepage: ::package_url::
