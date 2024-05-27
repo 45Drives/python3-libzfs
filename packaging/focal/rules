@@ -13,9 +13,19 @@
 # package maintainers to append LDFLAGS
 #export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
+
 %:
 	dh $@ --with python3 --buildsystem=pybuild
 
+override_dh_auto_configure:
+	./configure
+
+override_dh_auto_build:
+	pybuild --build -i python{version} -p 3.10
+
+override_dh_auto_clean:
+	pybuild --clean -i python{version} -p 3.10
+	python3 setup.py clean
 
 # dh_make generated override targets
 # This is example for Cmake (See https://bugs.debian.org/641051 )
