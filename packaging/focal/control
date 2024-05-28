@@ -9,5 +9,5 @@ Homepage: ::package_url::
 
 Package: ::package_name::
 Architecture: ::package_architecture_deb::
-Depends: ::package_dependencies_deb_focal::
+Depends: ::package_dependencies_deb_jammy::
 Description: ::package_description_short::
