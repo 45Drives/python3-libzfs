@@ -1,3 +1,3 @@
-## Py-libzfs 0.1.0-2
+## Py-libzfs 0.1.1-1
 
-* updating for jammy
+* Packaging for focal
