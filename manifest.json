@@ -32,7 +32,7 @@
                 "zfsutils-linux"
             ],
             "focal": [
-                "zfsutils-linux"
+                "zfs-dkms (>2)" 
             ]
         }
     },
@@ -41,11 +41,6 @@
             "image": "pylibzfs-rocky-el8-builder",
             "codeName": "el8",
             "type": "el"
-        },
-        {
-            "image": "pylibzfs-ubuntu-jammy-builder",
-            "codeName": "jammy",
-            "type": "deb"
         },
         {
             "image": "pylibzfs-ubuntu-focal-builder",
