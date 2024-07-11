@@ -32,7 +32,7 @@
                 "zfsutils-linux"
             ],
             "focal": [
-                "zfs-dkms (>2)"
+                "zfs-dkms"
             ]
         }
     },
