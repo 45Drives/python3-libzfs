@@ -1,3 +1,9 @@
+python3-libzfs (0.1.2-1focal) focal; urgency=medium
+
+  * Updating version number
+
+ -- Jordan Keough <jkeough@45drives.com>  Thu, 11 Jul 2024 11:31:22 -0300
+
 python3-libzfs (0.1.1-2focal) focal; urgency=medium
 
   * Adds ubuntu-focal support

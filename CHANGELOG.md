@@ -1,3 +1,3 @@
-## Py-libzfs 0.1.1-2
+## Py-libzfs 0.1.2-1
 
-* Adds ubuntu-focal support
+* Updating version number
