@@ -1,3 +1,3 @@
-## Py-libzfs 0.1.1-1
+## Py-libzfs 0.1.1-2
 
-* Packaging for focal
+* Adds ubuntu-focal support

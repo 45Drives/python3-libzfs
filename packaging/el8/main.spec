@@ -33,6 +33,8 @@ rm -rf $RPM_BUILD_ROOT
 %files -f INSTALLED_FILES
 
 %changelog
+* Thu Jul 11 2024 Jordan Keough <jkeough@45drives.com> 0.1.1-2
+- Adds ubuntu-focal support
 * Thu Jul 11 2024 Jordan Keough <jkeough@45drives.com> 0.1.1-1
 - Packaging for focal
 * Fri May 24 2024 Jordan Keough <jkeough@45drives.com> 0.1.0-2
