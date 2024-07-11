@@ -32,7 +32,7 @@
                 "zfsutils-linux"
             ],
             "focal": [
-                "zfs-dkms (>2)" 
+                "zfs-dkms (>2)"
             ]
         }
     },
@@ -51,9 +51,9 @@
     "changelog": {
         "urgency": "medium",
         "version": "0.1.1",
-        "buildVersion": "1",
+        "buildVersion": "2",
         "ignore": [],
-        "date": null,
+        "date": "2024-07-11T11:03:40.099231",
         "packager": "Jordan Keough <jkeough@45drives.com>",
         "changes": []
     }
