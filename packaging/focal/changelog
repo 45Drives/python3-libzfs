@@ -1,3 +1,9 @@
+python3-libzfs (0.1.3-1focal) focal; urgency=medium
+
+  * Adds trim status tracking as originally intended
+
+ -- Jordan Keough <jkeough@45drives.com>  Mon, 21 Oct 2024 12:40:09 -0300
+
 python3-libzfs (0.1.2-1focal) focal; urgency=medium
 
   * Updating version number

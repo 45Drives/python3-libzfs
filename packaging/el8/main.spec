@@ -33,6 +33,8 @@ rm -rf $RPM_BUILD_ROOT
 %files -f INSTALLED_FILES
 
 %changelog
+* Mon Oct 21 2024 Jordan Keough <jkeough@45drives.com> 0.1.3-1
+- Adds trim status tracking as originally intended
 * Thu Jul 11 2024 Jordan Keough <jkeough@45drives.com> 0.1.2-1
 - Updating version number
 * Thu Jul 11 2024 Jordan Keough <jkeough@45drives.com> 0.1.1-2
