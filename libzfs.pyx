@@ -2078,7 +2078,13 @@ cdef class ZFSVdevStats(object):
             'size': self.size,
             'allocated': self.allocated,
             'fragmentation': self.fragmentation,
-            'self_healed': self.self_healed
+            'self_healed': self.self_healed,
+            'trim_action_time': self.trim_action_time,
+            'trim_bytes_done': self.trim_bytes_done,
+            'trim_bytes_est': self.trim_bytes_est,
+            'trim_errors': self.trim_errors,
+            'trim_notsup': self.trim_notsup,
+            'trim_state': self.trim_state
         }
         IF HAVE_ZFS_VDEV_STAT_ASHIFT:
             state.update({
@@ -2153,6 +2159,30 @@ cdef class ZFSVdevStats(object):
         def __get__(self):
             # This is in bytes
             return self.vs.vs_self_healed
+
+    property trim_action_time:
+        def __get__(self):
+            return self.vs.vs_trim_action_time
+
+    property trim_bytes_done:
+        def __get__(self):
+            return self.vs.vs_trim_bytes_done
+
+    property trim_bytes_est:
+        def __get__(self):
+            return self.vs.vs_trim_bytes_est
+
+    property trim_errors:
+        def __get__(self):
+            return self.vs.vs_trim_errors
+
+    property trim_notsup:
+        def __get__(self):
+            return self.vs.vs_trim_notsup
+
+    property trim_state:
+        def __get__(self):
+            return self.vs.vs_trim_state
 
 
 cdef class ZFSVdev(object):
