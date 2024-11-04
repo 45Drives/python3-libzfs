@@ -1,3 +1,3 @@
-## Py-libzfs 0.1.3-1
+## Py-libzfs 1.0.0-1
 
-* Adds trim status tracking as originally intended
+* Stable Release
