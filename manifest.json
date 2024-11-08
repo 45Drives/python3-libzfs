@@ -22,11 +22,6 @@
         "urgency": "medium"
     },
     "dependencies": {
-        "el": {
-            "el8": [
-                "zfs"
-            ]
-        },
         "deb": {
             "jammy": [
                 "zfsutils-linux"
@@ -37,11 +32,6 @@
         }
     },
     "releases": [
-        {
-            "image": "pylibzfs-rocky-el8-builder",
-            "codeName": "el8",
-            "type": "el"
-        },
         {
             "image": "pylibzfs-ubuntu-focal-builder",
             "codeName": "focal",
