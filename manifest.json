@@ -3,7 +3,7 @@
     "name": "python3-libzfs",
     "title": "Py-libzfs",
     "prerelease": false,
-    "version": "1.0.0",
+    "version": "2.2.1",
     "buildVersion": "1",
     "author": "Jordan Keough <jkeough@45drives.com>",
     "url": "https://github.com/45Drives/python3-libzfs",
@@ -32,7 +32,7 @@
                 "zfsutils-linux"
             ],
             "focal": [
-                "zfs-dkms"
+                "zfsutils-linux"
             ]
         }
     },
@@ -50,7 +50,7 @@
     ],
     "changelog": {
         "urgency": "medium",
-        "version": "1.0.0",
+        "version": "2.2.1",
         "buildVersion": "1",
         "ignore": [],
         "date": null,

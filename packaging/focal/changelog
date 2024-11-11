@@ -1,3 +1,9 @@
+python3-libzfs (2.2.1-1focal) focal; urgency=medium
+
+  * first release for zfs-2.2 support
+
+ -- Jordan Keough <jkeough@45drives.com>  Mon, 11 Nov 2024 06:25:33 -0400
+
 python3-libzfs (1.0.0-1focal) focal; urgency=medium
 
   * Stable Release
