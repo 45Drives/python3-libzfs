@@ -2,7 +2,7 @@ name: Build Packages
 on:
   push:
     branches: 
-      - main
+      - zfs-2.1
     tags:
       - 'v*.*.*'
 jobs:

@@ -1,3 +1,3 @@
-## Py-libzfs 1.0.0-1
+## Py-libzfs 2.1.1-1
 
-* Stable Release
+* support zfs-2.1
