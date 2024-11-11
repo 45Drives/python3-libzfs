@@ -1,3 +1,3 @@
-## Py-libzfs 2.2.1-2.2.1
+## Py-libzfs 2.2.1-3
 
-* updated package dependancies
+* fix broken build version
