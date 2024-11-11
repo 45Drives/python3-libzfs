@@ -33,6 +33,8 @@ rm -rf $RPM_BUILD_ROOT
 %files -f INSTALLED_FILES
 
 %changelog
+* Mon Nov 11 2024 Jordan Keough <jkeough@45drives.com> 2.2.1-2.2.1
+- updated package dependancies
 * Mon Nov 11 2024 Jordan Keough <jkeough@45drives.com> 2.2.1-1
 - first release for zfs-2.2 support
 * Mon Nov 04 2024 Jordan Keough <jkeough@45drives.com> 1.0.0-1
