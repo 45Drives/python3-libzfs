@@ -4,7 +4,7 @@
     "title": "Py-libzfs",
     "prerelease": false,
     "version": "2.2.1",
-    "buildVersion": "3",
+    "buildVersion": "4",
     "author": "Jordan Keough <jkeough@45drives.com>",
     "url": "https://github.com/45Drives/python3-libzfs",
     "category": "utils",
@@ -31,11 +31,11 @@
         "deb": {
             "jammy": [
                 "zfsutils-linux (>= 2.2)",
-                "zfsutils-linux (<< 2.3"
+                "zfsutils-linux (<< 2.3)"
             ],
             "focal": [
                 "zfsutils-linux (>= 2.2)",
-                "zfsutils-linux (<< 2.3"
+                "zfsutils-linux (<< 2.3)"
             ]
         }
     },
@@ -54,7 +54,7 @@
     "changelog": {
         "urgency": "medium",
         "version": "2.2.1",
-        "buildVersion": "3",
+        "buildVersion": "4",
         "ignore": [],
         "date": null,
         "packager": "Jordan Keough <jkeough@45drives.com>",

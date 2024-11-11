@@ -33,6 +33,8 @@ rm -rf $RPM_BUILD_ROOT
 %files -f INSTALLED_FILES
 
 %changelog
+* Mon Nov 11 2024 Jordan Keough <jkeough@45drives.com> 2.2.1-4
+- updated build dependencies
 * Mon Nov 11 2024 Jordan Keough <jkeough@45drives.com> 2.2.1-3
 - fix broken build version
 * Mon Nov 11 2024 Jordan Keough <jkeough@45drives.com> 2.2.1-2.2.1
