@@ -1,3 +1,9 @@
+python3-libzfs (2.2.1-5focal) focal; urgency=medium
+
+  * update build deps
+
+ -- Jordan Keough <jkeough@45drives.com>  Mon, 11 Nov 2024 08:39:46 -0400
+
 python3-libzfs (2.2.1-4focal) focal; urgency=medium
 
   * updated build dependencies
