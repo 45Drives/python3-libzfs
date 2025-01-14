@@ -1269,13 +1269,9 @@ cdef class ZFS(object):
 
         if iargs.path != NULL:
             free(iargs.path)
-
         if result is NULL:
             IF HAVE_ZPOOL_SEARCH_IMPORT_LIBZUTIL and HAVE_ZPOOL_SEARCH_IMPORT_PARAMS == 2:
-                if cachefile:
-                    raise ZFSInvalidCachefileException(LpcError(lpch.lpc_error), lpch.lpc_desc)
-                else:
-                    raise ZFSException(LpcError(lpch.lpc_error), lpch.lpc_desc)
+                raise ZFSException(LpcError(lpch.lpc_error), lpch.lpc_desc)
             ELSE:
                 return
 
