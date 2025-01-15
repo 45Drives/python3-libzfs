@@ -360,6 +360,68 @@ cdef validate_zfs_resource_name(str name, int r_type):
     return bool(ret)
 
 
+def validate_draid_configuration(children, draid_parity, draid_spare_disks, draid_data_disks):
+    draid_data_disks = zfs.VDEV_DRAID_MAX_CHILDREN if draid_data_disks is None else draid_data_disks
+    # Validation added from
+    # https://github.com/truenas/zfs/blob/2bb9ef45772886bffcc93b59cfd62594f478cc83/cmd/zpool/zpool_vdev.c#L1369
+
+    if draid_data_disks == zfs.VDEV_DRAID_MAX_CHILDREN:
+        if children > draid_spare_disks + draid_parity:
+            draid_data_disks = min(children - draid_spare_disks - draid_parity, 8)
+        else:
+            raise ZFSException(
+                py_errno.EINVAL,
+                f'Request number of distributed spares {draid_spare_disks} and parity level {draid_parity}\n'
+                'leaves no disks available for data'
+            )
+
+    if draid_data_disks == 0 or (draid_data_disks + draid_parity) > (children - draid_spare_disks):
+        raise ZFSException(
+            py_errno.EINVAL,
+            f'Requested number of dRAID data disks per group {draid_data_disks} is too high, at'
+            f' most {children - draid_spare_disks - draid_parity} disks are available for data'
+        )
+
+    if draid_parity == 0 or draid_parity > zfs.VDEV_DRAID_MAXPARITY:
+        raise ZFSException(
+            py_errno.EINVAL,
+            f'Invalid dRAID parity level {draid_parity}; must be between 1 and {zfs.VDEV_DRAID_MAXPARITY}'
+        )
+
+    if draid_spare_disks > 100 or draid_spare_disks > (children - (draid_data_disks + draid_parity)):
+        raise ZFSException(
+            py_errno.EINVAL,
+            f'Invalid number of dRAID spares {draid_spare_disks}. Additional disks would be required'
+        )
+
+    if children < (draid_data_disks + draid_parity + draid_spare_disks):
+        raise ZFSException(
+            py_errno.EINVAL,
+            f'{children} disks were provided, but at least '
+            f'{draid_data_disks + draid_parity + draid_spare_disks} disks are required for this config'
+        )
+
+    if children > zfs.VDEV_DRAID_MAX_CHILDREN:
+        raise ZFSException(
+            py_errno.EINVAL,
+            f'{children} disks were provided, but dRAID only supports up to {zfs.VDEV_DRAID_MAX_CHILDREN} disks'
+        )
+    return draid_data_disks
+
+def update_draid_config(nvlist, children, draid_parity=1, draid_spare_disks=0, draid_data_disks=None):
+    draid_data_disks = validate_draid_configuration(children, draid_parity, draid_spare_disks, draid_data_disks)
+
+    ngroups = 1
+    while (ngroups * (draid_data_disks + draid_parity)) % (children - draid_spare_disks) != 0:
+        ngroups += 1
+
+    # Store the basic dRAID configuration.
+    nvlist[zfs.ZPOOL_CONFIG_NPARITY] = draid_parity
+    nvlist[zfs.ZPOOL_CONFIG_DRAID_NDATA] = draid_data_disks
+    nvlist[zfs.ZPOOL_CONFIG_DRAID_NSPARES] = draid_spare_disks
+    nvlist[zfs.ZPOOL_CONFIG_DRAID_NGROUPS] = ngroups
+
+
 class DiffRecord(object):
     def __init__(self, raw):
         timestamp, cmd, typ, rest = raw.split(maxsplit=3)
@@ -409,13 +471,18 @@ class ZFSException(RuntimeError):
 
 
 class ZFSVdevStatsException(ZFSException):
-    def __init__(self, code):
-        super(ZFSVdevStatsException, self).__init__(code, 'Failed to fetch ZFS Vdev Stats')
+    def __init__(self, code, message='Failed to fetch ZFS Vdev Stats'):
+        super(ZFSVdevStatsException, self).__init__(code, message)
+
+
+class ZFSPoolRaidzExpandStatsException(ZFSException):
+    def __init__(self, code, message='Failed to retrieve ZFS pool scan stats'):
+        super(ZFSPoolRaidzExpandStatsException, self).__init__(code, message)
 
 
 class ZFSPoolScanStatsException(ZFSException):
-    def __init__(self, code):
-        super(ZFSPoolScanStatsException, self).__init__(code, 'Failed to retrieve ZFS pool scan stats')
+    def __init__(self, code, message='Failed to retrieve ZFS pool scan stats'):
+        super(ZFSPoolScanStatsException, self).__init__(code, message)
 
 
 cdef class ZFS(object):
@@ -640,6 +707,14 @@ cdef class ZFS(object):
                 IF HAVE_ZPOOL_CONFIG_ALLOCATION_BIAS:
                     vdev.nvlist[zfs.ZPOOL_CONFIG_ALLOCATION_BIAS] = zfs.VDEV_ALLOC_BIAS_LOG
                 root.add_child_vdev((<ZFSVdev>add_properties_to_vdev(vdev)))
+
+        if 'draid' in topology:
+            children = len(topology['draid'])
+            for draid in topology['draid']:
+                vdev = <ZFSVdev>draid['disk']
+                update_draid_config(vdev.nvlist, **draid['parameters'])
+                root.add_child_vdev((<ZFSVdev>add_properties_to_vdev(vdev)))
+
 
         IF HAVE_ZPOOL_CONFIG_ALLOCATION_BIAS:
             if 'special' in topology:
@@ -1269,9 +1344,13 @@ cdef class ZFS(object):
 
         if iargs.path != NULL:
             free(iargs.path)
+
         if result is NULL:
             IF HAVE_ZPOOL_SEARCH_IMPORT_LIBZUTIL and HAVE_ZPOOL_SEARCH_IMPORT_PARAMS == 2:
-                raise ZFSException(LpcError(lpch.lpc_error), lpch.lpc_desc)
+                if cachefile:
+                    raise ZFSInvalidCachefileException(LpcError(lpch.lpc_error), lpch.lpc_desc)
+                else:
+                    raise ZFSException(LpcError(lpch.lpc_error), lpch.lpc_desc)
             ELSE:
                 return
 
@@ -2159,23 +2238,18 @@ cdef class ZFSVdevStats(object):
     property trim_action_time:
         def __get__(self):
             return self.vs.vs_trim_action_time
-
     property trim_bytes_done:
         def __get__(self):
             return self.vs.vs_trim_bytes_done
-
     property trim_bytes_est:
         def __get__(self):
             return self.vs.vs_trim_bytes_est
-
     property trim_errors:
         def __get__(self):
             return self.vs.vs_trim_errors
-
     property trim_notsup:
         def __get__(self):
             return self.vs.vs_trim_notsup
-
     property trim_state:
         def __get__(self):
             return self.vs.vs_trim_state
@@ -2236,19 +2310,20 @@ cdef class ZFSVdev(object):
         cdef int rv
         cdef boolean_t rebuild = False
 
-        if self.type not in (zfs.VDEV_TYPE_MIRROR, zfs.VDEV_TYPE_DISK, zfs.VDEV_TYPE_FILE):
+        if self.type not in (zfs.VDEV_TYPE_MIRROR, zfs.VDEV_TYPE_DISK, zfs.VDEV_TYPE_FILE, 'raidz1', 'raidz2', 'raidz3'):
             raise ZFSException(Error.NOTSUP, "Can attach disks to mirrors and stripes only")
 
         if self.type == zfs.VDEV_TYPE_MIRROR:
-            first_child = next(self.children)
+            first_child_path = next(self.children).path
+        elif self.type in ('raidz1', 'raidz2', 'raidz3'):
+            first_child_path = self.name
         else:
-            first_child = self
+            first_child_path = self.path
 
         root = self.root.make_vdev_tree({
             'data': [vdev]
         }, {'ashift': self.zpool.properties['ashift'].parsed})
 
-        first_child_path = first_child.path
         new_vdev_path = vdev.path
 
         cdef const char* c_first_child_path = first_child_path
@@ -2267,7 +2342,7 @@ cdef class ZFSVdev(object):
         if rv != 0:
             raise self.root.get_error()
 
-        self.root.write_history(command, self.zpool.name, first_child.path, vdev.path)
+        self.root.write_history(command, self.zpool.name, first_child_path, vdev.path)
 
     def replace(self, ZFSVdev vdev):
         cdef const char *command = 'zpool replace'
@@ -2416,7 +2491,8 @@ cdef class ZFSVdev(object):
                 'raidz1',
                 'raidz2',
                 'raidz3',
-                zfs.VDEV_TYPE_MIRROR
+                zfs.VDEV_TYPE_MIRROR,
+                zfs.VDEV_TYPE_DRAID,
             ):
                 raise ValueError('Invalid vdev type')
 
@@ -2507,6 +2583,102 @@ cdef class ZFSVdev(object):
                 return result
 
 
+cdef class ZPoolRaidzExpand(object):
+    cdef readonly ZFS root
+    cdef readonly ZFSPool pool
+    cdef zfs.pool_raidz_expand_stat_t *stats
+
+    def __init__(self, ZFS root, ZFSPool pool):
+        self.root = root
+        self.pool = pool
+        self.stats = NULL
+        cdef NVList config
+        cdef NVList nvroot = pool.get_raw_config().get_raw(zfs.ZPOOL_CONFIG_VDEV_TREE)
+        cdef int ret
+        cdef uint_t total
+        if zfs.ZPOOL_CONFIG_SCAN_STATS not in nvroot:
+            return
+
+        ret = nvroot.nvlist_lookup_uint64_array(
+            <nvpair.nvlist_t*>nvroot.handle, zfs.ZPOOL_CONFIG_RAIDZ_EXPAND_STATS, <uint64_t **>&self.stats, &total
+        )
+        if ret != 0:
+            raise ZFSPoolRaidzExpandStatsException(ret)
+
+    property state:
+        def __get__(self):
+            if self.stats != NULL:
+                return ScanState(self.stats.pres_state)
+
+    property expanding_vdev:
+        def __get__(self):
+            if self.stats != NULL:
+                return self.stats.pres_expanding_vdev
+
+    property start_time:
+        def __get__(self):
+            if self.stats != NULL:
+                return datetime.utcfromtimestamp(self.stats.pres_start_time)
+
+    property end_time:
+        def __get__(self):
+            if self.stats != NULL and self.state != ScanState.SCANNING:
+                return datetime.utcfromtimestamp(self.stats.pres_end_time)
+
+    property bytes_to_reflow:
+        def __get__(self):
+            if self.stats != NULL:
+                return self.stats.pres_to_reflow
+
+    property bytes_reflowed:
+        def __get__(self):
+            if self.stats != NULL:
+                return self.stats.pres_reflowed
+
+    property waiting_for_resilver:
+        def __get__(self):
+            if self.stats != NULL:
+                return self.stats.pres_waiting_for_resilver
+
+    property total_secs_left:
+        def __get__(self):
+            if self.state != ScanState.SCANNING:
+                return
+
+            copied = self.bytes_reflowed
+            total = self.bytes_to_reflow or 1
+            fraction_done = <float>copied / <float>total
+
+            elapsed = time.time() - self.stats.pres_start_time
+            elapsed = elapsed or 1
+            rate = <float>copied / <float>elapsed
+            rate = rate or 1
+            return int((total - copied) / rate)
+
+    property percentage:
+        def __get__(self):
+            if self.stats == NULL:
+                return
+
+            copied = self.bytes_reflowed
+            total = self.bytes_to_reflow or 1
+
+            return (<float>copied / <float>total) * 100
+
+    def asdict(self):
+        return {
+            'state': self.state.name if self.stats != NULL else None,
+            'expanding_vdev': self.expanding_vdev,
+            'start_time': self.start_time,
+            'end_time': self.end_time,
+            'bytes_to_reflow': self.bytes_to_reflow,
+            'bytes_reflowed': self.bytes_reflowed,
+            'waiting_for_resilver': self.waiting_for_resilver,
+            'total_secs_left': self.total_secs_left,
+            'percentage': self.percentage,
+        }
+
+
 cdef class ZPoolScrub(object):
     cdef readonly ZFS root
     cdef readonly ZFSPool pool
@@ -2564,7 +2736,7 @@ cdef class ZPoolScrub(object):
             if self.state != ScanState.SCANNING:
                 return
 
-            total = self.bytes_to_scan
+            total = self.bytes_to_scan - self.stats.pss_skipped
             issued = self.bytes_issued
             elapsed = ((int(time.time()) - self.stats.pss_pass_start) - self.stats.pss_pass_scrub_spent_paused) or 1
             pass_issued = self.stats.pss_pass_issued or 1
@@ -2580,6 +2752,11 @@ cdef class ZPoolScrub(object):
         def __get__(self):
             if self.stats != NULL:
                 return self.stats.pss_pass_issued
+
+    property bytes_skipped:
+        def __get__(self):
+            if self.stats != NULL:
+                return self.stats.pss_skipped
 
     property pause:
         def __get__(self):
@@ -2599,7 +2776,11 @@ cdef class ZPoolScrub(object):
             if not self.bytes_to_scan:
                 return 0
 
-            return (<float>self.bytes_issued / <float>self.bytes_to_scan) * 100
+            bytes_total = self.bytes_to_scan - self.bytes_skipped
+            if bytes_total == 0:
+                return 0
+
+            return (<float>self.bytes_issued / <float>bytes_total) * 100
 
     def asdict(self):
         return {
@@ -2649,6 +2830,16 @@ cdef class ZFSPool(object):
 
         filter_vdevs = [zfs.VDEV_TYPE_HOLE, zfs.VDEV_TYPE_INDIRECT]
 
+        try:
+            scan = self.scrub.asdict()
+        except ZFSPoolScanStatsException:
+            scan = None
+
+        try:
+            expand = self.expand.asdict()
+        except ZFSPoolRaidzExpandStatsException:
+            expand = None
+
         state = {
             'name': self.name,
             'id': self.name,
@@ -2661,7 +2852,8 @@ cdef class ZFSPool(object):
             'root_dataset': root_ds,
             'properties': {k: p.asdict() for k, p in self.properties.items()} if self.properties else None,
             'features': [i.asdict() for i in self.features] if self.features else None,
-            'scan': self.scrub.asdict(),
+            'scan': scan,
+            'expand': expand,
             'root_vdev': self.root_vdev.asdict(False),
             'groups': {
                 'data': [i.asdict() for i in self.data_vdevs if i.type not in filter_vdevs],
@@ -2855,7 +3047,10 @@ cdef class ZFSPool(object):
 
     property healthy:
         def __get__(self):
-            return self.status_code in [PoolStatus.OK] + self.__warning_statuses()
+            healthy_statuses = [PoolStatus.OK]
+            if self.name in ['boot-pool', 'freenas-boot']:
+                healthy_statuses.append(PoolStatus.INCOMPATIBLE_FEAT)
+            return self.status_code in healthy_statuses + self.__warning_statuses()
 
     property warning:
         def __get__(self):
@@ -2957,7 +3152,7 @@ cdef class ZFSPool(object):
             result = {}
 
             with nogil:
-                libzfs.zprop_iter(self.__iterate_props, <void*>proptypes, True, True, zfs.ZFS_TYPE_POOL)
+                libzfs.zprop_iter(self.__iterate_props, <void*>proptypes, False, True, zfs.ZFS_TYPE_POOL)
 
             for x in proptypes:
                 prop = ZPoolProperty.__new__(ZPoolProperty)
@@ -3002,6 +3197,10 @@ cdef class ZFSPool(object):
     property scrub:
         def __get__(self):
             return ZPoolScrub(self.root, self)
+
+    property expand:
+        def __get__(self):
+            return ZPoolRaidzExpand(self.root, self)
 
     IF HAVE_LZC_WAIT:
         def wait(self, operation_type):
@@ -3121,13 +3320,14 @@ cdef class ZFSPool(object):
             hopts = self.root.generate_history_opts(fsopts, '-o')
             self.root.write_history('zfs create', hopts, name)
 
-    def attach_vdevs(self, vdevs_tree):
+    def attach_vdevs(self, vdevs_tree, check_ashift=0):
         cdef const char *command = 'zpool add'
         cdef ZFSVdev vd = self.root.make_vdev_tree(vdevs_tree, {'ashift': self.properties['ashift'].parsed})
         cdef int ret
+        cdef boolean_t ashift = check_ashift
 
         with nogil:
-            ret = libzfs.zpool_add(self.handle, vd.nvlist.handle)
+            ret = libzfs.zpool_add(self.handle, vd.nvlist.handle, ashift)
 
         if ret != 0:
             raise self.root.get_error()
@@ -3220,6 +3420,40 @@ cdef class ZFSPool(object):
                 i.enable()
 
         self.root.write_history('zpool upgrade', self.name)
+
+    def ddt_prefetch(self):
+        cdef int ret
+
+        with nogil:
+            ret = libzfs.zpool_prefetch(self.handle, zfs.ZPOOL_PREFETCH_DDT)
+
+        if ret != 0:
+            raise self.root.get_error()
+
+        self.root.write_history('zpool prefetch -t ddt', self.name)
+
+    def ddt_prune(self, percentage=None, days=None):
+        cdef int ret
+        cdef zfs.zpool_ddt_prune_unit_t arg
+        cdef uint64_t value
+
+        if percentage is not None and days is not None:
+            raise ZFSException(py_errno.EINVAL, 'Only one of "days" or "percentage" should be defined, not both')
+        elif percentage is not None and (percentage > 100 or percentage < 1):
+            raise ZFSException(py_errno.EINVAL, 'Invalid percentage value it must be between 1 to 100')
+        elif days is not None and days < 1:
+            raise ZFSException(py_errno.EINVAL, 'Invalid number of days they must be greater than 1')
+
+        arg = zfs.ZPOOL_DDT_PRUNE_PERCENTAGE if percentage else zfs.ZPOOL_DDT_PRUNE_AGE
+        value = percentage or days
+
+        with nogil:
+            ret = libzfs.zpool_ddt_prune(self.handle, arg, value)
+
+        if ret != 0:
+            raise self.root.get_error()
+
+        self.root.write_history('zpool ddt-prune', {'-p' if percentage else '-d'}, {percentage or days}, self.name)
 
 
 cdef class ZFSImportablePool(ZFSPool):
@@ -3569,10 +3803,43 @@ cdef class ZFSResource(ZFSObject):
         if invalid_values:
             raise ZFSException(Error.BADPROP, f'Malformed values provided for {", ".join(invalid_values)!r}')
 
+        # we capture what the current self.root.errno is set to
+        # because `self.root` is a readonly property defined in
+        # the parent ZFS class. This means we can't overwrite it
+        # by simply doing "self.root.errno = 0". It's important
+        # that we capture the previous errno BEFORE calling
+        # zfs_prop_set_list(). The reason why we do this is
+        # because this python module allows users to instantiate
+        # a "long-lived" handle on a zfs resource. If we don't
+        # keep track of this errno, someone might fat-finger
+        # updating a property of a zvol (for example). When that
+        # happens, self.root.errno is set. However, if they try
+        # to set the proper value after correcting the typo, they
+        # will be presented with the errno that was set previously.
+        # Here is an interactive python example showing the issue
+        # >>> import libzfs
+        # >>> zzzvol = libzfs.ZFS().get_object('dozer/zzzvol')
+        # >>> zzzvol.update_properties({'volthreading': {'value': 'on'}})
+        # >>> zzzvol.update_properties({'volthreading': {'value': 'o'}})
+        # Traceback (most recent call last):
+        #   File "<stdin>", line 1, in <module>
+        #   File "libzfs.pyx", line 3743, in libzfs.ZFSResource.update_properties
+        # libzfs.ZFSException: cannot set property for 'dozer/zzzvol': 'volthreading' must be one of 'on | off'
+        # >>> zzzvol.update_properties({'volthreading': {'value': 'on'}})
+        # Traceback (most recent call last):
+        #   File "<stdin>", line 1, in <module>
+        #   File "libzfs.pyx", line 3743, in libzfs.ZFSResource.update_properties
+        # libzfs.ZFSException: cannot set property for 'dozer/zzzvol': 'volthreading' must be one of 'on | off'
+        prev_errno = self.root.errno
         with nogil:
             ret = libzfs.zfs_prop_set_list(self.handle, props.handle)
 
-        if ret != 0:
+        if ret != 0 or (prev_errno != self.root.errno and self.root.errno != 0):
+            # setting the propert(y/ies) failed or
+            # the propert(y/ies) was/were changed successfully
+            # but the extended behavior that comes after failed
+            # (i.e. sharenfs=on will update files in exports/conf.d
+            #   which can fail for a myriad of reasons)
             raise self.root.get_error()
 
     @staticmethod
@@ -4025,22 +4292,29 @@ cdef class ZFSDataset(ZFSResource):
     def mount(self):
         cdef int ret
 
-        with nogil:
-            ret = libzfs.zfs_mount(self.handle, NULL, 0)
+        try:
+            mounted = self.properties['mounted']
+        except KeyError:
+            # zvols don't have a mounted property
+            return
+        else:
+            if mounted.value == 'no':
+                with nogil:
+                    ret = libzfs.zfs_mount(self.handle, NULL, 0)
 
-        if ret != 0:
-            raise self.root.get_error()
+                if ret != 0:
+                    raise self.root.get_error()
 
-        self.root.write_history('zfs mount', self.name)
+                self.root.write_history('zfs mount', self.name)
 
     IF HAVE_ZFS_ENCRYPTION:
-        def mount_recursive(self, ignore_errors=False, skip_unloaded_keys=True):
-            return self._mount_recursive(ignore_errors, skip_unloaded_keys)
+        def mount_recursive(self, ignore_errors=False, skip_unloaded_keys=True, force_mount=False):
+            return self._mount_recursive(ignore_errors, skip_unloaded_keys, force_mount)
     ELSE:
-        def mount_recursive(self, ignore_errors=False):
-            return self._mount_recursive(ignore_errors, False)
+        def mount_recursive(self, ignore_errors=False, force_mount=False):
+            return self._mount_recursive(ignore_errors, False, force_mount)
 
-    def _mount_recursive(self, ignore_errors, skip_unloaded_keys):
+    def _mount_recursive(self, ignore_errors, skip_unloaded_keys, force_mount):
         if self.type != DatasetType.FILESYSTEM:
             return
 
@@ -4048,7 +4322,7 @@ cdef class ZFSDataset(ZFSResource):
             if self.encrypted and not self.key_loaded and skip_unloaded_keys:
                 return
 
-        if self.properties['canmount'].value == 'on':
+        if self.properties['canmount'].value == 'on' or force_mount:
             try:
                 self.mount()
             except:
@@ -4056,7 +4330,7 @@ cdef class ZFSDataset(ZFSResource):
                     raise
 
         for i in self.children:
-            i._mount_recursive(ignore_errors, skip_unloaded_keys)
+            i._mount_recursive(ignore_errors, skip_unloaded_keys, force_mount)
 
     def umount(self, force=False):
         cdef int flags = 0
