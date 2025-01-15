@@ -1,3 +1,9 @@
+python3-libzfs (0.1.4-1focal) focal; urgency=medium
+
+  * Testing py-libzfs updates to try and fix import issue
+
+ -- Jordan Keough <jkeough@45drives.com>  Wed, 15 Jan 2025 06:42:57 -0400
+
 python3-libzfs (1.0.0-1focal) focal; urgency=medium
 
   * Stable Release

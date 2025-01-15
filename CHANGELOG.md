@@ -1,3 +1,3 @@
-## Py-libzfs 1.0.0-1
+## Py-libzfs 0.1.4-1
 
-* Stable Release
+* Testing py-libzfs updates to try and fix import issue
