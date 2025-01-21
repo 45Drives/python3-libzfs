@@ -1,4 +1,3 @@
-## Py-libzfs 2.1.1-2
+## Py-libzfs 2.2.1-6
 
-* use correct builder container
-* use correct builder container
+* built package for bookworm

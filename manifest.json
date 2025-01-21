@@ -4,7 +4,7 @@
     "title": "Py-libzfs",
     "prerelease": false,
     "version": "2.2.1",
-    "buildVersion": "5",
+    "buildVersion": "6",
     "author": "Jordan Keough <jkeough@45drives.com>",
     "url": "https://github.com/45Drives/python3-libzfs",
     "category": "utils",
@@ -20,8 +20,7 @@
     "defaults": {
         "urgency": "medium"
     },
-    "dependencies": {
-    },
+    "dependencies": {},
     "releases": [
         {
             "image": "pylibzfs-ubuntu-focal-builder",
@@ -32,7 +31,7 @@
     "changelog": {
         "urgency": "medium",
         "version": "2.2.1",
-        "buildVersion": "5",
+        "buildVersion": "6",
         "ignore": [],
         "date": null,
         "packager": "Jordan Keough <jkeough@45drives.com>",
