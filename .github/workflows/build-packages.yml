@@ -2,9 +2,7 @@ name: Build Packages
 on:
   push:
     branches: 
-      - zfs-2.1
-    tags:
-      - 'v*.*.*'
+      - debian
 jobs:
   main:
     runs-on: deployinatorv1
