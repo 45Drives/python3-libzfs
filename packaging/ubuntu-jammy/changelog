@@ -1,0 +1,5 @@
+python3-libzfs (2.2.1-1jammy) focal; urgency=medium
+
+  * update build deps
+
+ -- Brett Kelly <bkelly@45drives.com>  Mon, 3 Feb 2025 08:39:46 -0400
