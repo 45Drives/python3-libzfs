@@ -4,7 +4,7 @@
     "title": "Py-libzfs",
     "description": "python libzfs",
     "version": "2.2.1",
-    "build_number": "5",
+    "build_number": "6",
     "stable": true,
     "author": "Brett Kelly <bkelly@45drives.com>",
     "git_url": "https://github.com/45Drives/python3-libzfs",
@@ -21,7 +21,7 @@
         "ubuntu_common": [
             "zfsutils (>= 2.2)",
             "zfsutils (<< 2.3)"
-        ], 
+        ],
         "rocky_common": [
             "zfs >= 2.2",
             "zfs < 2.3"
@@ -31,71 +31,29 @@
         {
             "group": "ubuntu",
             "os_name": "ubuntu-focal",
-            "repo": "community",
-            "image": "ci.cr.45d.io/ci/simple/ubuntu-focal:1"
-        },
-        {
-            "group": "ubuntu",
-            "os_name": "ubuntu-focal",
-            "repo": "enterprise",
             "image": "ci.cr.45d.io/ci/simple/ubuntu-focal:1"
         },
         {
             "group": "ubuntu",
             "os_name": "ubuntu-jammy",
-            "repo": "community",
-            "image": "ci.cr.45d.io/ci/simple/ubuntu-jammy:1"
-        },
-        {
-            "group": "ubuntu",
-            "os_name": "ubuntu-jammy",
-            "repo": "enterprise",
             "image": "ci.cr.45d.io/ci/simple/ubuntu-jammy:1"
         },
         {
             "group": "rocky",
-            "os_name": "rocky-el8",
-            "repo": "community",
-            "image": "ci.cr.45d.io/ci/simple/rocky-el8:1"
-        },
-        {
-            "group": "rocky",
-            "os_name": "rocky-el8",
-            "repo": "enterprise",
-            "image": "ci.cr.45d.io/ci/simple/rocky-el8:1"
-        },
-        {
-            "group": "rocky",
             "os_name": "rocky-el9",
-            "repo": "community",
-            "image": "ci.cr.45d.io/ci/simple/rocky-el9:1"
-        },
-        {
-            "group": "rocky",
-            "os_name": "rocky-el9",
-            "repo": "enterprise",
             "image": "ci.cr.45d.io/ci/simple/rocky-el9:1"
         }
     ],
-    "sources": [
-        "m4",
-        "pxd",
-        "config.py.in",
-        "configure",
-        "configure.ac",
-        "converter.pxi",
-        "libzfs.pyx",
-        "nvpair.pxi",
-        "setup.py",
-        "setup_requires.txt"
+    "repos": [
+        "communinty",
+        "enterprise"
     ],
     "changelog": {
         "urgency": "medium",
         "version": "2.2.1",
-        "buildVersion": "5",
-        "ignore": [],
+        "build_number": "6",
         "date": null,
-        "packager": "Jordan Keough <jkeough@45drives.com>",
+        "packager": "Brett Kelly <bkelly@45drives.com>",
         "changes": []
     }
 }

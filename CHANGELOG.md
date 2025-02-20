@@ -1,3 +1,3 @@
-## Py-libzfs 2.2.1-5
+## Py-libzfs 2.2.1-6
 
-* update build deps
+* build for new repos
