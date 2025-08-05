@@ -1,3 +1,6 @@
+%global __python3 /usr/bin/python3.6
+%global python3_pkgversion 36
+
 Name: {{ name }}
 Version: {{ version }}
 Release: {{ build_number }}%{?dist}
@@ -7,6 +10,12 @@ URL: {{ git_url }}
 Source0: %{name}-%{version}.tar.gz
 BuildArch: {{ architecture.rocky }}
 Requires: {{ dependencies.rocky_common | join(',') }}
+
+BuildRequires: python3.6
+BuildRequires: python3.6-devel
+BuildRequires: python3.6-pip
+BuildRequires: python3.6-setuptools
+BuildRequires: python3.6-distutils
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
@@ -19,13 +28,13 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
 %build
 echo "Starting build process..."
-pip3 install Cython==0.29.35
+/usr/bin/python3.6 -m pip install Cython==0.29.35
 ./configure --prefix=/usr
 make
 
 %install
 echo "Starting install process..."
-python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
+/usr/bin/python3.6 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
 
 %clean
 rm -rf $RPM_BUILD_ROOT
