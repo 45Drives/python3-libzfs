@@ -2,7 +2,7 @@ name: Build Packages
 on:
   push:
     branches: 
-      - zfs-2.1
+      - python-3.9-update-zfs2.1
     tags:
       - 'v*.*.*'
 jobs:

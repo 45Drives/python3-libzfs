@@ -1,4 +1,3 @@
-## Py-libzfs 2.1.1-2
+## Py-libzfs 2.1.2-1
 
-* use correct builder container
-* use correct builder container
+* Testing explicit python3.6 version
