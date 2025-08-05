@@ -1,47 +1,47 @@
 {
-    "__version": "45D-R2",
+    "schema_version": "45D_AP_V2.0",
     "name": "python3-libzfs",
     "title": "Py-libzfs",
-    "prerelease": false,
-    "version": "1.0.0",
-    "buildVersion": "1",
-    "author": "Jordan Keough <jkeough@45drives.com>",
-    "url": "https://github.com/45Drives/python3-libzfs",
-    "category": "utils",
-    "priority": "optional",
-    "licence": "GPL-3.0+",
-    "architecture": {
-        "deb": "all",
-        "el": "x86_64"
-    },
-    "description": {
-        "long": "python libzfs",
-        "short": "python libzfs"
-    },
+    "description": "python libzfs",
+    "version": "2.1.1",
+    "build_number": "2",
+    "stable": true,
+    "author": "Brett Kelly <bkelly@45drives.com>",
+    "git_url": "https://github.com/45Drives/python3-libzfs",
+    "license": "GPL-3.0+",
     "defaults": {
-        "urgency": "medium"
+        "change_urgency": "medium"
+    },
+    "architecture": {
+        "ubuntu": "amd64",
+        "debian": "amd64",
+        "rocky": "x86_64"
     },
     "dependencies": {
-        "deb": {
-            "jammy": [
-                "zfsutils-linux"
-            ],
-            "focal": [
-                "zfs-dkms"
-            ]
-        }
+        "ubuntu_common": [
+            "zfsutils (>= 2.1)",
+            "zfsutils (<< 2.2)"
+        ],
+        "rocky_common": [
+            "zfs >= 2.1",
+            "zfs < 2.2"
+        ]
     },
-    "releases": [
+    "builds": [
         {
-            "image": "pylibzfs-ubuntu-focal-builder",
-            "codeName": "focal",
-            "type": "deb"
+            "group": "rocky",
+            "os_name": "rocky-el8",
+            "image": "ci.cr.45d.io/ci/zfs/rocky-el8:1"
         }
+    ],
+    "repos": [
+        "community",
+        "enterprise"
     ],
     "changelog": {
         "urgency": "medium",
-        "version": "1.0.0",
-        "buildVersion": "1",
+        "version": "2.1.1",
+        "buildVersion": "2",
         "ignore": [],
         "date": null,
         "packager": "Jordan Keough <jkeough@45drives.com>",

@@ -1,0 +1,14 @@
+Source: {{ name }}
+Section: utils
+Priority: optional
+Maintainer: {{ author }}
+Build-Depends: debhelper-compat (= 13), python3-all, python3-setuptools, dh-python
+Standards-Version: 4.4.1
+X-Python3-Version: >= 3.6
+Homepage: {{ git_url }}
+Vcs-Git: {{ git_url }}
+
+Package: {{ name }}
+Architecture: {{ architecture.ubuntu }}
+Depends: {{ dependencies.ubuntu_common | join(',') }}
+Description: {{ description }}
