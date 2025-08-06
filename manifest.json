@@ -5,7 +5,7 @@
     "description": "python libzfs",
     "version": "2.1.1",
     "build_number": "2",
-    "stable": false,
+    "stable": true,
     "author": "Brett Kelly <bkelly@45drives.com>",
     "git_url": "https://github.com/45Drives/python3-libzfs",
     "license": "GPL-3.0+",
@@ -24,9 +24,7 @@
         ],
         "rocky_common": [
             "zfs >= 2.1",
-            "zfs < 2.2",
-            "python3.6",
-            "python3.6-devel"
+            "zfs < 2.2"
         ]
     },
     "builds": [
