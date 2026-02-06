@@ -42,6 +42,11 @@
             "group": "rocky",
             "os_name": "rocky-el9",
             "image": "ci.cr.45d.io/ci/zfs/rocky-el9:1"
+        },
+        {
+            "group": "rocky",
+            "os_name": "rocky-el8",
+            "image": "ci.cr.45d.io/ci/zfs/rocky-el8:1"
         }
     ],
     "repos": [
