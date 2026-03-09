@@ -10,11 +10,10 @@ from libc.stdint cimport uintptr_t
 from libc.stdlib cimport malloc, free
 
 try:
-    from collections import Sequence
-except ImportError:
-    # >= py3.10 moved everything into top-level "abc" module
-    # https://docs.python.org/3.9/library/collections.html
     from collections.abc import Sequence
+except ImportError:
+    # < py3.3 fallback
+    from collections import Sequence
 
 
 @cython.internal
