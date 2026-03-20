@@ -2,18 +2,13 @@
 # cython: language_level=3, c_string_type=unicode, c_string_encoding=default
 
 cimport nvpair
-import collections
 import numbers
 import cython
 from types cimport *
 from libc.stdint cimport uintptr_t
 from libc.stdlib cimport malloc, free
 
-try:
-    from collections.abc import Sequence
-except ImportError:
-    # < py3.3 fallback
-    from collections import Sequence
+from collections.abc import Sequence
 
 
 @cython.internal
