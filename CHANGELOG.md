@@ -1,3 +1,3 @@
-## Py-libzfs 2.2.1-6
+## Py-libzfs 2.2.1-7
 
-* build for new repos
+* build el8 package for zfs 2.2 support
