@@ -22,6 +22,10 @@
             "zfsutils (>= 2.2)",
             "zfsutils (<< 2.3)"
         ],
+        "debian": [
+            "zfsutils-linux (>= 2.2)",
+            "zfsutils-linux (<< 2.3)"
+        ],
         "rocky_common": [
             "zfs >= 2.2",
             "zfs < 2.3"
@@ -29,9 +33,29 @@
     },
     "builds": [
         {
+            "group": "ubuntu",
+            "os_name": "ubuntu-focal",
+            "image": "ci.cr.45d.io/ci/zfs/ubuntu-focal:1"
+        },
+        {
+            "group": "ubuntu",
+            "os_name": "ubuntu-jammy",
+            "image": "ci.cr.45d.io/ci/zfs/ubuntu-jammy:1"
+        },
+        {
             "group": "rocky",
             "os_name": "rocky-el8",
             "image": "ci.cr.45d.io/ci/zfs/rocky-el8:1"
+        },
+        {
+            "group": "rocky",
+            "os_name": "rocky-el9",
+            "image": "ci.cr.45d.io/ci/zfs/rocky-el9:1"
+        },
+        {
+            "group": "debian",
+            "os_name": "debian-bookworm",
+            "image": "ci.cr.45d.io/ci/zfs/debian-bookworm:1"
         }
     ],
     "repos": [
