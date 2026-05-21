@@ -3129,10 +3129,9 @@ cdef class ZFSPool(object):
         cdef const char *command = 'zpool add'
         cdef ZFSVdev vd = self.root.make_vdev_tree(vdevs_tree, {'ashift': self.properties['ashift'].parsed})
         cdef int ret
-        cdef boolean_t ashift = check_ashift
 
         with nogil:
-            ret = libzfs.zpool_add(self.handle, vd.nvlist.handle, ashift)
+            ret = libzfs.zpool_add(self.handle, vd.nvlist.handle)
 
         if ret != 0:
             raise self.root.get_error()
