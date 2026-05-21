@@ -1,0 +1,5 @@
+python3-libzfs (2.2.1-8bookworm) bookworm; urgency=medium
+
+  * Trying new debian-bookworm build image + building all distros at once
+
+ -- Jordan Keough <jkeough@45drives.com>  Thu, 21 May 2026 06:07:13 -0300

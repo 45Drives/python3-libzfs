@@ -1,3 +1,3 @@
-## Py-libzfs 2.2.1-7
+## Py-libzfs 2.2.1-8
 
-* build el8 package for zfs 2.2 support
+* Trying new debian-bookworm build image + building all distros at once
