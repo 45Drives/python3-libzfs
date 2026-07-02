@@ -127,7 +127,7 @@ if [[ "$build_macos" = "yes" ]]; then
 	CFLAGS="${CFLAGS} -DHAVE_STRLCAT -DHAVE_STRLCPY"
 fi
 
-CFLAGS="${CFLAGS} -Werror=implicit-function-declaration"
+CFLAGS="${CFLAGS} -Werror=implicit-function-declaration -Wno-error=incompatible-pointer-types"
 
 
 SECTION_TITLE([RUNNING TESTS ON zfs.h HEADER])

@@ -1,0 +1,5 @@
+python3-libzfs (2.2.1-1trixie) trixie; urgency=medium
+
+  * Trixie (Proxmox 9) packaging
+
+ -- Rachit Hans <rhans@45drives.com>  Tue, 01 Jul 2026 10:00:00 -0300

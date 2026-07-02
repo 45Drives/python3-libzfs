@@ -333,6 +333,7 @@ cdef struct iter_state:
     uintptr_t *array
     size_t length
     size_t alloc
+    int error
 
 
 cdef struct prop_iter_state:
@@ -428,6 +429,7 @@ cdef class ZFS(object):
     def __cinit__(self, history=True, history_prefix='py-libzfs:', mnttab_cache=True):
         cdef zfs.zfs_type_t c_type
         cdef prop_iter_state iter
+        cdef int zprop_ret
         self.mnttab_cache_enable=mnttab_cache
 
         with nogil:
@@ -450,7 +452,9 @@ cdef class ZFS(object):
             iter.type = c_type
             iter.props = <void *>proptypes
             with nogil:
-                libzfs.zprop_iter(self.__iterate_props, <void*>&iter, True, True, c_type)
+                zprop_ret = libzfs.zprop_iter(ZFS.__iterate_props, <void*>&iter, True, True, c_type)
+            if zprop_ret == zfs.ZPROP_INVAL:
+                raise RuntimeError(f'Failed to enumerate properties for type {t}')
 
             props = self.proptypes.setdefault(t, [])
             if set(proptypes) != set(props):
@@ -518,7 +522,7 @@ cdef class ZFS(object):
                 return retval
 
     @staticmethod
-    cdef int __iterate_props(int proptype, void *arg) nogil:
+    cdef int __iterate_props(int proptype, void *arg) noexcept nogil:
         cdef prop_iter_state *iter
         cdef boolean_t ret = False
 
@@ -533,12 +537,15 @@ cdef class ZFS(object):
             return zfs.ZPROP_CONT
 
         with gil:
-            proptypes = <object>iter.props
-            proptypes.append(proptype)
+            try:
+                proptypes = <object>iter.props
+                proptypes.append(proptype)
+            except BaseException:
+                return -1
             return zfs.ZPROP_CONT
 
     @staticmethod
-    cdef int __iterate_pools(libzfs.zpool_handle_t *handle, void *arg) nogil:
+    cdef int __iterate_pools(libzfs.zpool_handle_t *handle, void *arg) noexcept nogil:
         cdef iter_state *iter
         cdef iter_state new
 
@@ -547,14 +554,15 @@ cdef class ZFS(object):
             new.alloc = iter.alloc + 32
             new.array = <uintptr_t *>realloc(iter.array, new.alloc * sizeof(uintptr_t))
             if not new.array:
-                free(iter.array)
-                raise MemoryError()
+                iter.error = 1
+                return -1
 
             iter.alloc = new.alloc
             iter.array = new.array
 
         iter.array[iter.length] = <uintptr_t>handle
         iter.length += 1
+        return 0
 
     @staticmethod
     cdef int __iterate_filesystems(libzfs.zfs_handle_t *zhp, int flags, libzfs.zfs_iter_f func, void *data) nogil:
@@ -658,7 +666,8 @@ cdef class ZFS(object):
         return root
 
     @staticmethod
-    cdef int __dataset_handles(libzfs.zfs_handle_t* handle, void *arg) nogil:
+    cdef int __dataset_handles(libzfs.zfs_handle_t* handle, void *arg) noexcept nogil:
+        cdef int ret
         cdef int prop_id
         cdef char csrcstr[MAX_DATASET_NAME_LEN + 1]
         cdef char crawvalue[libzfs.ZFS_MAXPROPLEN + 1]
@@ -675,99 +684,114 @@ cdef class ZFS(object):
         nvlist = libzfs.zfs_get_user_props(handle)
 
         with gil:
-            dataset_type = DatasetType(typ)
-            data_list = <object> arg
-            configuration_data = data_list[0]
-            retrieve_children = configuration_data['retrieve_children']
-            data = data_list[1]
-            children = []
-            child_data = [configuration_data, {}]
-            properties = {}
+            try:
+                dataset_type = DatasetType(typ)
+                data_list = <object> arg
+                configuration_data = data_list[0]
+                retrieve_children = configuration_data['retrieve_children']
+                data = data_list[1]
+                children = []
+                child_data = [configuration_data, {}]
+                properties = {}
 
-            for key, value in NVList(<uintptr_t>nvlist).items() if configuration_data['user_props'] else []:
-                src = 'NONE'
-                if value.get('source'):
-                    src = value.pop('source')
-                    if src == name:
-                        src = PropertySource.LOCAL.name
-                    elif src == '$recvd':
-                        src = PropertySource.RECEIVED.name
-                    else:
-                        src = PropertySource.INHERITED.name
+                for key, value in NVList(<uintptr_t>nvlist).items() if configuration_data['user_props'] else []:
+                    src = 'NONE'
+                    if value.get('source'):
+                        src = value.pop('source')
+                        if src == name:
+                            src = PropertySource.LOCAL.name
+                        elif src == '$recvd':
+                            src = PropertySource.RECEIVED.name
+                        else:
+                            src = PropertySource.INHERITED.name
 
-                properties[key] = {
-                    'value': value.get('value'),
-                    'rawvalue': value.get('value'),
-                    'source': src,
-                    'parsed': value.get('value')
-                }
+                    properties[key] = {
+                        'value': value.get('value'),
+                        'rawvalue': value.get('value'),
+                        'source': src,
+                        'parsed': value.get('value')
+                    }
 
-            for prop_name, prop_id in configuration_data['props'].get(dataset_type, {}).items():
-                csource = zfs.ZPROP_SRC_NONE
-                with nogil:
-                    strncpy(cvalue, '', libzfs.ZFS_MAXPROPLEN + 1)
-                    strncpy(crawvalue, '', libzfs.ZFS_MAXPROPLEN + 1)
-                    strncpy(csrcstr, '', MAX_DATASET_NAME_LEN + 1)
+                for prop_name, prop_id in configuration_data['props'].get(dataset_type, {}).items():
+                    csource = zfs.ZPROP_SRC_NONE
+                    with nogil:
+                        strncpy(cvalue, '', libzfs.ZFS_MAXPROPLEN + 1)
+                        strncpy(crawvalue, '', libzfs.ZFS_MAXPROPLEN + 1)
+                        strncpy(csrcstr, '', MAX_DATASET_NAME_LEN + 1)
 
-                    if libzfs.zfs_prop_get(
-                        handle, prop_id, cvalue, libzfs.ZFS_MAXPROPLEN,
-                        &csource, csrcstr, MAX_DATASET_NAME_LEN, False
-                    ) != 0:
-                        csource = zfs.ZPROP_SRC_NONE
+                        if libzfs.zfs_prop_get(
+                            handle, prop_id, cvalue, libzfs.ZFS_MAXPROPLEN,
+                            &csource, csrcstr, MAX_DATASET_NAME_LEN, False
+                        ) != 0:
+                            csource = zfs.ZPROP_SRC_NONE
 
-                    libzfs.zfs_prop_get(
-                        handle, prop_id, crawvalue, libzfs.ZFS_MAXPROPLEN,
-                        NULL, NULL, 0, True
-                    )
+                        libzfs.zfs_prop_get(
+                            handle, prop_id, crawvalue, libzfs.ZFS_MAXPROPLEN,
+                            NULL, NULL, 0, True
+                        )
 
-                properties[prop_name] = {
-                    'parsed': parse_zfs_prop(prop_name, crawvalue),
-                    'rawvalue': crawvalue,
-                    'value': cvalue,
-                    'source': PropertySource(<int>csource).name,
-                    'source_info': str(csrcstr) if csource == zfs.ZPROP_SRC_INHERITED else None
-                }
+                    properties[prop_name] = {
+                        'parsed': parse_zfs_prop(prop_name, crawvalue),
+                        'rawvalue': crawvalue,
+                        'value': cvalue,
+                        'source': PropertySource(<int>csource).name,
+                        'source_info': str(csrcstr) if csource == zfs.ZPROP_SRC_INHERITED else None
+                    }
+
+            except BaseException:
+                libzfs.zfs_close(handle)
+                return -1
 
         if retrieve_children:
-            ZFS.__iterate_filesystems(handle, 0, ZFS.__dataset_handles, <void*>child_data)
+            ret = ZFS.__iterate_filesystems(handle, 0, ZFS.__dataset_handles, <void*>child_data)
+            if ret != 0:
+                libzfs.zfs_close(handle)
+                return -1
 
         with gil:
-            data[name] = {}
-            child_data = child_data[1]
-            encryption_dict = {}
+            try:
+                data[name] = {}
+                child_data = child_data[1]
+                encryption_dict = {}
 
-            IF HAVE_ZFS_ENCRYPTION:
-                if 'encryption' in properties:
-                    encryption_dict['encrypted'] = properties['encryption']['value'] != 'off'
-                if 'encryptionroot' in properties:
-                    encryption_dict['encryption_root'] = properties['encryptionroot']['value'] or None
-                if 'keystatus' in properties:
-                    encryption_dict['key_loaded'] = properties['keystatus']['value'] == 'available'
+                IF HAVE_ZFS_ENCRYPTION:
+                    if 'encryption' in properties:
+                        encryption_dict['encrypted'] = properties['encryption']['value'] != 'off'
+                    if 'encryptionroot' in properties:
+                        encryption_dict['encryption_root'] = properties['encryptionroot']['value'] or None
+                    if 'keystatus' in properties:
+                        encryption_dict['key_loaded'] = properties['keystatus']['value'] == 'available'
 
-            data[name].update({
-                'properties': properties,
-                'id': name,
-                'type': dataset_type.name,
-                'name': name,
-                'pool': configuration_data['pool'],
-                **encryption_dict,
-            })
-            if retrieve_children:
-                data[name]['children'] = list(child_data.values())
+                data[name].update({
+                    'properties': properties,
+                    'id': name,
+                    'type': dataset_type.name,
+                    'name': name,
+                    'pool': configuration_data['pool'],
+                    **encryption_dict,
+                })
+                if retrieve_children:
+                    data[name]['children'] = list(child_data.values())
 
-            if configuration_data['snapshots'] or configuration_data['snapshots_recursive']:
-                snap_props = ['name']
-                if configuration_data['snapshot_props'] is None:
-                    # We will retrieve all properties of snapshot in this case
-                    snap_props = None
-                else:
-                    snap_props.extend(configuration_data['snapshot_props'])
-                snap_list = ZFS._snapshots_snaplist_arg(
-                    snap_props, False, False, configuration_data['snapshots_recursive'], False, 0, 0
-                )
-                snap_list[0]['pool'] = configuration_data['pool']
-                ZFS.__datasets_snapshots(handle, <void*>snap_list)
-                data[name]['snapshots'] = snap_list[1:]
+                if configuration_data['snapshots'] or configuration_data['snapshots_recursive']:
+                    snap_props = ['name']
+                    if configuration_data['snapshot_props'] is None:
+                        # We will retrieve all properties of snapshot in this case
+                        snap_props = None
+                    else:
+                        snap_props.extend(configuration_data['snapshot_props'])
+                    snap_list = ZFS._snapshots_snaplist_arg(
+                        snap_props, False, False, configuration_data['snapshots_recursive'], False, 0, 0
+                    )
+                    snap_list[0]['pool'] = configuration_data['pool']
+                    snap_ret = ZFS.__datasets_snapshots(handle, <void*>snap_list)
+                    if snap_ret != 0:
+                        raise RuntimeError('snapshot serialization failed')
+                    data[name]['snapshots'] = snap_list[1:]
+
+            except BaseException:
+                libzfs.zfs_close(handle)
+                return -1
 
         libzfs.zfs_close(handle)
 
@@ -778,6 +802,7 @@ cdef class ZFS(object):
         cdef libzfs.zfs_handle_t* handle
         cdef const char *c_name
         cdef int prop_id
+        cdef int ret
 
         prop_mapping = {}
         datasets = datasets or [p.name for p in self.pools]
@@ -816,13 +841,15 @@ cdef class ZFS(object):
                     # and it's okay to continue checking the next one
                     continue
                 else:
-                    ZFS.__dataset_handles(handle, <void*>dataset)
+                    ret = ZFS.__dataset_handles(handle, <void*>dataset)
 
+            if ret != 0:
+                raise RuntimeError(f"Failed to serialize dataset '{ds_name}'")
             if len(dataset) > 1:
                 yield dataset[1][ds_name]
 
     @staticmethod
-    cdef int __retrieve_mountable_datasets_handles(libzfs.zfs_handle_t* handle, void *arg) nogil:
+    cdef int __retrieve_mountable_datasets_handles(libzfs.zfs_handle_t* handle, void *arg) noexcept nogil:
         cdef libzfs.get_all_cb_t *cb = <libzfs.get_all_cb_t*>arg
         if libzfs.zfs_get_type(handle) != zfs.ZFS_TYPE_FILESYSTEM:
             libzfs.zfs_close(handle)
@@ -850,7 +877,7 @@ cdef class ZFS(object):
         ZFS.__iterate_filesystems(handle, 0, ZFS.__retrieve_mountable_datasets_handles, cb)
 
     @staticmethod
-    cdef int mount_dataset(libzfs.zfs_handle_t *zhp, void *arg) nogil:
+    cdef int mount_dataset(libzfs.zfs_handle_t *zhp, void *arg) noexcept nogil:
         cdef int ret
         cdef nvpair.nvlist_t* mount_data = <nvpair.nvlist_t*>arg
         IF HAVE_ZFS_ENCRYPTION:
@@ -863,7 +890,7 @@ cdef class ZFS(object):
         return ret
 
     @staticmethod
-    cdef int share_one_dataset(libzfs.zfs_handle_t *zhp, void *arg) nogil:
+    cdef int share_one_dataset(libzfs.zfs_handle_t *zhp, void *arg) noexcept nogil:
         cdef int ret
         IF HAVE_ZFS_SHARE == 1:
             ret = libzfs.zfs_share(zhp)
@@ -871,8 +898,11 @@ cdef class ZFS(object):
             ret = libzfs.zfs_share(zhp, NULL)
         if ret != 0:
             with gil:
-                mount_results = <object> arg
-                mount_results['failed_share'].append(libzfs.zfs_get_name(zhp))
+                try:
+                    mount_results = <object> arg
+                    mount_results['failed_share'].append(libzfs.zfs_get_name(zhp))
+                except BaseException:
+                    pass
         return ret
 
     def run(self):
@@ -933,7 +963,7 @@ cdef class ZFS(object):
                     raise ZFSException(Error.MOUNTFAILED, error_str)
 
     @staticmethod
-    cdef int __snapshot_details(libzfs.zfs_handle_t *handle, void *arg) nogil:
+    cdef int __snapshot_details(libzfs.zfs_handle_t *handle, void *arg) noexcept nogil:
         cdef int prop_id, ret, simple_handle, holds, mounted
         cdef char csrcstr[MAX_DATASET_NAME_LEN + 1]
         cdef char crawvalue[libzfs.ZFS_MAXPROPLEN + 1]
@@ -948,19 +978,26 @@ cdef class ZFS(object):
         cdef uint64_t create_txg
 
         with gil:
-            snap_list = <object> arg
-            configuration_data = snap_list[0]
-            pool = configuration_data['pool']
-            props = configuration_data['props']
-            holds = configuration_data['holds']
-            mounted = configuration_data['mounted']
-            min_txg = configuration_data['min_txg']
-            max_txg = configuration_data['max_txg']
-            properties = {}
-            simple_handle = set(props).issubset({'name', 'createtxg'})
-            snap_data = {}
+            try:
+                snap_list = <object> arg
+                configuration_data = snap_list[0]
+                pool = configuration_data['pool']
+                props = configuration_data['props']
+                holds = configuration_data['holds']
+                mounted = configuration_data['mounted']
+                min_txg = configuration_data['min_txg']
+                max_txg = configuration_data['max_txg']
+                properties = {}
+                simple_handle = set(props).issubset({'name', 'createtxg'})
+                snap_data = {}
 
-        libzfs.zfs_iter_snapshots(handle, simple_handle, ZFS.__snapshot_details, <void*>snap_list, min_txg, max_txg)
+            except BaseException:
+                if libzfs.zfs_get_type(handle) == zfs.ZFS_TYPE_SNAPSHOT:
+                    libzfs.zfs_close(handle)
+                return -1
+        ret = libzfs.zfs_iter_snapshots(handle, simple_handle, ZFS.__snapshot_details, <void*>snap_list, min_txg, max_txg)
+        if ret != 0:
+            return ret
 
         if libzfs.zfs_get_type(handle) != zfs.ZFS_TYPE_SNAPSHOT:
             return 0
@@ -970,61 +1007,71 @@ cdef class ZFS(object):
         create_txg = libzfs.zfs_prop_get_int(handle, zfs.ZFS_PROP_CREATETXG)
 
         with gil:
+            try:
 
-            # Gathering user props
-            nvl = NVList(<uintptr_t>nvlist)
+                # Gathering user props
+                nvl = NVList(<uintptr_t>nvlist)
 
-            for key, value in nvl.items():
-                src = 'NONE'
-                if value.get('source'):
-                    src = value.pop('source')
-                    if src == name:
-                        src = PropertySource.LOCAL.name
-                    elif src == '$recvd':
-                        src = PropertySource.RECEIVED.name
-                    else:
-                        src = PropertySource.INHERITED.name
+                for key, value in nvl.items():
+                    src = 'NONE'
+                    if value.get('source'):
+                        src = value.pop('source')
+                        if src == name:
+                            src = PropertySource.LOCAL.name
+                        elif src == '$recvd':
+                            src = PropertySource.RECEIVED.name
+                        else:
+                            src = PropertySource.INHERITED.name
 
-                properties[key] = {
-                    'value': value.get('value'),
-                    'rawvalue': value.get('value'),
-                    'source': src,
-                    'parsed': value.get('value')
-                }
+                    properties[key] = {
+                        'value': value.get('value'),
+                        'rawvalue': value.get('value'),
+                        'source': src,
+                        'parsed': value.get('value')
+                    }
 
-            for prop_name, prop_id in (props if not simple_handle else {}).items():
-                csource = zfs.ZPROP_SRC_NONE
-                with nogil:
-                    strncpy(cvalue, '', libzfs.ZFS_MAXPROPLEN + 1)
-                    strncpy(crawvalue, '', libzfs.ZFS_MAXPROPLEN + 1)
-                    strncpy(csrcstr, '', MAX_DATASET_NAME_LEN + 1)
+                for prop_name, prop_id in (props if not simple_handle else {}).items():
+                    csource = zfs.ZPROP_SRC_NONE
+                    with nogil:
+                        strncpy(cvalue, '', libzfs.ZFS_MAXPROPLEN + 1)
+                        strncpy(crawvalue, '', libzfs.ZFS_MAXPROPLEN + 1)
+                        strncpy(csrcstr, '', MAX_DATASET_NAME_LEN + 1)
 
-                    if libzfs.zfs_prop_get(
-                        handle, prop_id, cvalue, libzfs.ZFS_MAXPROPLEN,
-                        &csource, csrcstr, MAX_DATASET_NAME_LEN, False
-                    ) != 0:
-                        csource = zfs.ZPROP_SRC_NONE
+                        if libzfs.zfs_prop_get(
+                            handle, prop_id, cvalue, libzfs.ZFS_MAXPROPLEN,
+                            &csource, csrcstr, MAX_DATASET_NAME_LEN, False
+                        ) != 0:
+                            csource = zfs.ZPROP_SRC_NONE
 
-                    libzfs.zfs_prop_get(
-                        handle, prop_id, crawvalue, libzfs.ZFS_MAXPROPLEN,
-                        NULL, NULL, 0, True
-                    )
+                        libzfs.zfs_prop_get(
+                            handle, prop_id, crawvalue, libzfs.ZFS_MAXPROPLEN,
+                            NULL, NULL, 0, True
+                        )
 
-                properties[prop_name] = {
-                    'parsed': parse_zfs_prop(prop_name, crawvalue),
-                    'rawvalue': crawvalue,
-                    'value': cvalue,
-                    'source': PropertySource(<int>csource).name
-                }
+                    properties[prop_name] = {
+                        'parsed': parse_zfs_prop(prop_name, crawvalue),
+                        'rawvalue': crawvalue,
+                        'value': cvalue,
+                        'source': PropertySource(<int>csource).name
+                    }
 
+            except BaseException:
+                libzfs.zfs_close(handle)
+                return -1
         if holds:
             ret = libzfs.zfs_get_holds(handle, &ptr)
 
             with gil:
-                if ret != 0:
-                    snap_data['holds'] = {}
-                else:
-                    snap_data['holds'] = dict(NVList(<uintptr_t> ptr))
+                try:
+                    if ret != 0:
+                        snap_data['holds'] = {}
+                    else:
+                        snap_data['holds'] = dict(NVList(<uintptr_t> ptr))
+                except BaseException:
+                    if ret == 0:
+                        nvpair.nvlist_free(ptr)
+                    libzfs.zfs_close(handle)
+                    return -1
 
             if ret == 0:
                 nvpair.nvlist_free(ptr)
@@ -1033,48 +1080,73 @@ cdef class ZFS(object):
             ret = libzfs.zfs_is_mounted(handle, &mntpt)
 
             with gil:
-                if ret == 0:
-                    snap_data['mountpoint'] = None
-                else:
-                    try:
-                        snap_data['mountpoint'] = str(mntpt)
-                    finally:
-                        free(mntpt)
+                try:
+                    if ret == 0:
+                        snap_data['mountpoint'] = None
+                    else:
+                        try:
+                            snap_data['mountpoint'] = str(mntpt)
+                        finally:
+                            free(mntpt)
+                except BaseException:
+                    libzfs.zfs_close(handle)
+                    return -1
 
         with gil:
-            if not simple_handle:
-                snap_data['properties'] = properties
+            try:
+                if not simple_handle:
+                    snap_data['properties'] = properties
 
-            snap_data.update({
-                'pool': pool,
-                'name': name,
-                'type': DatasetType.SNAPSHOT.name,
-                'snapshot_name': name.split('@')[-1],
-                'dataset': name.split('@')[0],
-                'id': name,
-                'createtxg': str(create_txg)
-            })
+                snap_data.update({
+                    'pool': pool,
+                    'name': name,
+                    'type': DatasetType.SNAPSHOT.name,
+                    'snapshot_name': name.split('@')[-1],
+                    'dataset': name.split('@')[0],
+                    'id': name,
+                    'createtxg': str(create_txg)
+                })
 
-            snap_list.append(snap_data)
+                snap_list.append(snap_data)
 
+            except BaseException:
+                libzfs.zfs_close(handle)
+                return -1
         libzfs.zfs_close(handle)
 
     @staticmethod
-    cdef int __datasets_snapshots(libzfs.zfs_handle_t *handle, void *arg) nogil:
+    cdef int __datasets_snapshots(libzfs.zfs_handle_t *handle, void *arg) noexcept nogil:
         cdef boolean_t close_handle, recursive, is_dataset
+        cdef int ret
 
         is_dataset = libzfs.zfs_get_type(handle) != zfs.ZFS_TYPE_SNAPSHOT
-        ZFS.__snapshot_details(handle, arg)
+        close_handle = False
+
+        # Read close_handle first so we know whether we own the handle
         with gil:
-            snap_list = <object> arg
-            close_handle = snap_list[0]['close_handle']
-            recursive = snap_list[0]['recursive']
+            try:
+                snap_list = <object> arg
+                close_handle = snap_list[0]['close_handle']
+                recursive = snap_list[0]['recursive']
+            except BaseException:
+                if is_dataset and close_handle:
+                    libzfs.zfs_close(handle)
+                return -1
+
+        ret = ZFS.__snapshot_details(handle, arg)
+        if ret != 0:
+            if is_dataset and close_handle:
+                libzfs.zfs_close(handle)
+            return ret
 
         if is_dataset:
             if recursive:
-                ZFS.__iterate_filesystems(handle, 0, ZFS.__datasets_snapshots, arg)
+                ret = ZFS.__iterate_filesystems(handle, 0, ZFS.__datasets_snapshots, arg)
             if close_handle:
                 libzfs.zfs_close(handle)
+            if ret != 0:
+                return ret
+        return 0
 
     @staticmethod
     cdef object _snapshots_snaplist_arg(
@@ -1109,6 +1181,7 @@ cdef class ZFS(object):
     ):
         cdef libzfs.zfs_handle_t* handle
         cdef const char *c_name
+        cdef int ret
 
         snap_list = ZFS._snapshots_snaplist_arg(props, holds, mounted, recursive, True, min_txg, max_txg)
         for dataset in datasets:
@@ -1122,7 +1195,10 @@ cdef class ZFS(object):
                                          zfs.ZFS_TYPE_FILESYSTEM | zfs.ZFS_TYPE_VOLUME | zfs.ZFS_TYPE_SNAPSHOT)
                 if handle == NULL:
                     continue
-                ZFS.__datasets_snapshots(handle, <void*>snap_list)
+                ret = ZFS.__datasets_snapshots(handle, <void*>snap_list)
+
+            if ret != 0:
+                raise RuntimeError(f"Failed to serialize snapshots for dataset '{dataset}'")
 
         return snap_list[1:]
 
@@ -1153,14 +1229,18 @@ cdef class ZFS(object):
             try:
                 with nogil:
                     iter.length = 0
+                    iter.error = 0
                     iter.array = <uintptr_t *>malloc(32 * sizeof(uintptr_t))
                     if not iter.array:
-                        raise MemoryError()
+                        with gil:
+                            raise MemoryError()
 
                     iter.alloc = 32
 
-                    libzfs.zpool_iter(self.handle, self.__iterate_pools, <void*>&iter)
+                    libzfs.zpool_iter(self.handle, ZFS.__iterate_pools, <void*>&iter)
 
+                if iter.error:
+                    raise MemoryError()
                 for h in range(0, iter.length):
                     handle = <libzfs.zpool_handle_t*>iter.array[h]
                     pool = ZFSPool.__new__(ZFSPool)
@@ -1174,12 +1254,13 @@ cdef class ZFS(object):
 
             finally:
                 with nogil:
-                    for h in range(0, iter.length):
-                        if iter.array[h] != 0:
-                            handle = <libzfs.zpool_handle_t *>iter.array[h]
-                            libzfs.zpool_close(handle)
+                    if iter.array != NULL:
+                        for h in range(0, iter.length):
+                            if iter.array[h] != 0:
+                                handle = <libzfs.zpool_handle_t *>iter.array[h]
+                                libzfs.zpool_close(handle)
 
-                    free(iter.array)
+                        free(iter.array)
 
             if self.mnttab_cache_enable:
                 with nogil:
@@ -2689,10 +2770,13 @@ cdef class ZFSPool(object):
         return state
 
     @staticmethod
-    cdef int __iterate_props(int proptype, void* arg) nogil:
+    cdef int __iterate_props(int proptype, void* arg) noexcept nogil:
         with gil:
-            proptypes = <object>arg
-            proptypes.append(proptype)
+            try:
+                proptypes = <object>arg
+                proptypes.append(proptype)
+            except BaseException:
+                return -1
             return zfs.ZPROP_CONT
 
     property root_dataset:
@@ -2957,11 +3041,14 @@ cdef class ZFSPool(object):
     property properties:
         def __get__(self):
             cdef ZPoolProperty prop
+            cdef int zprop_ret
             proptypes = []
             result = {}
 
             with nogil:
-                libzfs.zprop_iter(self.__iterate_props, <void*>proptypes, True, True, zfs.ZFS_TYPE_POOL)
+                zprop_ret = libzfs.zprop_iter(ZFSPool.__iterate_props, <void*>proptypes, True, True, zfs.ZFS_TYPE_POOL)
+            if zprop_ret == zfs.ZPROP_INVAL:
+                raise RuntimeError('Failed to enumerate pool properties')
 
             for x in proptypes:
                 prop = ZPoolProperty.__new__(ZPoolProperty)
@@ -3494,7 +3581,7 @@ cdef class ZFSObject(object):
 cdef class ZFSResource(ZFSObject):
 
     @staticmethod
-    cdef int __iterate(libzfs.zfs_handle_t* handle, void *arg) nogil:
+    cdef int __iterate(libzfs.zfs_handle_t* handle, void *arg) noexcept nogil:
         cdef iter_state *iter
         cdef iter_state new
 
@@ -3503,14 +3590,15 @@ cdef class ZFSResource(ZFSObject):
             new.alloc = iter.alloc + 128
             new.array = <uintptr_t *>realloc(iter.array, new.alloc * sizeof(uintptr_t))
             if not new.array:
-                free(iter.array)
-                raise MemoryError()
+                iter.error = 1
+                return -1
 
             iter.alloc = new.alloc
             iter.array = new.array
 
         iter.array[iter.length] = <uintptr_t>handle
         iter.length += 1
+        return 0
 
     def get_dependents(self, allow_recursion=False):
         cdef ZFSDataset dataset
@@ -3521,13 +3609,22 @@ cdef class ZFSResource(ZFSObject):
 
         with nogil:
             iter.length = 0
+            iter.error = 0
             iter.array = <uintptr_t *>malloc(128 * sizeof(uintptr_t))
             if not iter.array:
-                raise MemoryError()
+                with gil:
+                    raise MemoryError()
 
             iter.alloc = 128
-            ZFS.__iterate_dependents(self.handle, 0, recursion, self.__iterate, <void*>&iter)
+            ZFS.__iterate_dependents(self.handle, 0, recursion, ZFSResource.__iterate, <void*>&iter)
 
+        if iter.error:
+            with nogil:
+                for h in range(0, iter.length):
+                    if iter.array[h]:
+                        libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
+                free(iter.array)
+            raise MemoryError()
         try:
             for h in range(0, iter.length):
                 type = libzfs.zfs_get_type(<libzfs.zfs_handle_t*>iter.array[h])
@@ -3549,11 +3646,12 @@ cdef class ZFSResource(ZFSObject):
                     yield snapshot
         finally:
             with nogil:
-                for h in range(0, iter.length):
-                    if iter.array[h]:
-                        libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
+                if iter.array != NULL:
+                    for h in range(0, iter.length):
+                        if iter.array[h]:
+                            libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
 
-                free(iter.array)
+                    free(iter.array)
 
     def update_properties(self, all_properties):
         cdef NVList props = NVList()
@@ -3581,10 +3679,14 @@ cdef class ZFSResource(ZFSObject):
             raise self.root.get_error()
 
     @staticmethod
-    cdef int _userspace_cb(void *data, const char *domain, uint32_t rid, uint64_t space) nogil:
+    cdef int _userspace_cb(void *data, const char *domain, uint32_t rid, uint64_t space) noexcept nogil:
         with gil:
-            result = <list>data
-            result.append({'domain': domain, 'rid': rid, 'space': space})
+            try:
+                result = <list>data
+                result.append({'domain': domain, 'rid': rid, 'space': space})
+            except BaseException:
+                return -1
+        return 0
 
     def userspace(self, quota_props):
         results = {}
@@ -3624,15 +3726,20 @@ cdef class ZFSDataset(ZFSResource):
         return ret
 
     @staticmethod
-    cdef int __snapshots_callback(libzfs.zfs_handle_t * handle, void *arg) nogil:
+    cdef int __snapshots_callback(libzfs.zfs_handle_t * handle, void *arg) noexcept nogil:
         cdef const char *name = libzfs.zfs_get_name(handle)
         with gil:
-            snap_config = <object> arg
-            snap_config['snapshots'].append(name)
+            try:
+                snap_config = <object> arg
+                snap_config['snapshots'].append(name)
+            except BaseException:
+                libzfs.zfs_close(handle)
+                return -1
         libzfs.zfs_close(handle)
+        return 0
 
     @staticmethod
-    cdef int __gather_snapshots(libzfs.zfs_handle_t * handle, void *arg) nogil:
+    cdef int __gather_snapshots(libzfs.zfs_handle_t * handle, void *arg) noexcept nogil:
         cdef char *spec_orig
         cdef int err
 
@@ -3723,13 +3830,22 @@ cdef class ZFSDataset(ZFSResource):
             datasets = []
             with nogil:
                 iter.length = 0
+                iter.error = 0
                 iter.array = <uintptr_t *>malloc(128 * sizeof(uintptr_t))
                 if not iter.array:
-                    raise MemoryError()
+                    with gil:
+                        raise MemoryError()
 
                 iter.alloc = 128
-                ZFS.__iterate_filesystems(self.handle, 0, self.__iterate, <void*>&iter)
+                ZFS.__iterate_filesystems(self.handle, 0, ZFSResource.__iterate, <void*>&iter)
 
+            if iter.error:
+                with nogil:
+                    for h in range(0, iter.length):
+                        if iter.array[h]:
+                            libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
+                    free(iter.array)
+                raise MemoryError()
             try:
                 for h in range(0, iter.length):
                     dataset = ZFSDataset.__new__(ZFSDataset)
@@ -3740,11 +3856,12 @@ cdef class ZFSDataset(ZFSResource):
                     yield dataset
             finally:
                 with nogil:
-                    for h in range(0, iter.length):
-                        if iter.array[h]:
-                            libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
+                    if iter.array != NULL:
+                        for h in range(0, iter.length):
+                            if iter.array[h]:
+                                libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
 
-                    free(iter.array)
+                        free(iter.array)
 
     property children_recursive:
         def __get__(self):
@@ -3760,13 +3877,22 @@ cdef class ZFSDataset(ZFSResource):
 
             with nogil:
                 iter.length = 0
+                iter.error = 0
                 iter.array = <uintptr_t *>malloc(128 * sizeof(uintptr_t))
                 if not iter.array:
-                    raise MemoryError()
+                    with gil:
+                        raise MemoryError()
 
                 iter.alloc = 128
-                libzfs.zfs_iter_snapshots(self.handle, False, self.__iterate, <void*>&iter, 0, 0)
+                libzfs.zfs_iter_snapshots(self.handle, False, ZFSResource.__iterate, <void*>&iter, 0, 0)
 
+            if iter.error:
+                with nogil:
+                    for h in range(0, iter.length):
+                        if iter.array[h]:
+                            libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
+                    free(iter.array)
+                raise MemoryError()
             try:
                 for h in range(0, iter.length):
                     snapshot = ZFSSnapshot.__new__(ZFSSnapshot)
@@ -3780,11 +3906,12 @@ cdef class ZFSDataset(ZFSResource):
                     yield snapshot
             finally:
                 with nogil:
-                    for h in range(0, iter.length):
-                        if iter.array[h]:
-                            libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
+                    if iter.array != NULL:
+                        for h in range(0, iter.length):
+                            if iter.array[h]:
+                                libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
 
-                    free(iter.array)
+                        free(iter.array)
 
     property bookmarks:
         def __get__(self):
@@ -3793,13 +3920,22 @@ cdef class ZFSDataset(ZFSResource):
 
             with nogil:
                 iter.length = 0
+                iter.error = 0
                 iter.array = <uintptr_t *>malloc(128 * sizeof(uintptr_t))
                 if not iter.array:
-                    raise MemoryError()
+                    with gil:
+                        raise MemoryError()
 
                 iter.alloc = 128
-                ZFS.__iterate_bookmarks(self.handle, 0, self.__iterate, <void *>&iter)
+                ZFS.__iterate_bookmarks(self.handle, 0, ZFSResource.__iterate, <void *>&iter)
 
+            if iter.error:
+                with nogil:
+                    for h in range(0, iter.length):
+                        if iter.array[h]:
+                            libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
+                    free(iter.array)
+                raise MemoryError()
             try:
                 for b in range(0, iter.length):
                     bookmark = ZFSBookmark.__new__(ZFSBookmark)
@@ -3810,11 +3946,12 @@ cdef class ZFSDataset(ZFSResource):
                     yield bookmark
             finally:
                 with nogil:
-                    for h in range(0, iter.length):
-                        if iter.array[h]:
-                            libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
+                    if iter.array != NULL:
+                        for h in range(0, iter.length):
+                            if iter.array[h]:
+                                libzfs.zfs_close(<libzfs.zfs_handle_t*>iter.array[h])
 
-                    free(iter.array)
+                        free(iter.array)
 
     property snapshots_recursive:
         def __get__(self):
