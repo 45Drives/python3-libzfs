@@ -749,6 +749,7 @@ HAVE_ZPOOL_EVENTS_NEXT
 HAVE_ZPOOL_SEARCH_IMPORT_LIBZFS
 HAVE_ZVOLSIZE_TO_RESERVATION_PARAMS
 HAVE_ZFS_FOREACH_MOUNTPOINT
+HAVE_ZPOOL_ADD
 HAVE_ZPOOL_VDEV_ATTACH
 HAVE_ZPOOL_SEARCH_IMPORT_LIBZUTIL
 HAVE_ZPOOL_SEARCH_IMPORT_PARAMS
@@ -3438,7 +3439,7 @@ case "${host_os}" in
 		;;
 esac
 
-CFLAGS=""
+CFLAGS="-DCYTHON_FALLTHROUGH="
 LIBS="-lzfs -lnvpair -lzfs_core -luutil"
 
 if [ "${build_freebsd}" = "yes" ]; then
@@ -4087,6 +4088,38 @@ else $as_nop
   HAVE_ZPOOL_VDEV_ATTACH=5
  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: 5 params" >&5
 printf "%s\n" "$as_me: 5 params" >&6;}
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+
+
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: Checking zpool_add parameters" >&5
+printf "%s\n" "$as_me: Checking zpool_add parameters" >&6;}
+
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <libzfs.h>
+int
+main (void)
+{
+
+			zpool_add(NULL, NULL, 0);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  HAVE_ZPOOL_ADD=3
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: 3 params" >&5
+printf "%s\n" "$as_me: 3 params" >&6;}
+else $as_nop
+  HAVE_ZPOOL_ADD=2
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: 2 params" >&5
+printf "%s\n" "$as_me: 2 params" >&6;}
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \

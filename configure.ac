@@ -40,7 +40,7 @@ case "${host_os}" in
 		;;
 esac
 
-CFLAGS=""
+CFLAGS="-DCYTHON_FALLTHROUGH="
 LIBS="-lzfs -lnvpair -lzfs_core -luutil"
 
 if [[ "${build_freebsd}" = "yes" ]]; then
@@ -331,6 +331,21 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 	)],
 	[AC_SUBST(HAVE_ZPOOL_VDEV_ATTACH, 6) AC_MSG_NOTICE([6 params])],
 	[AC_SUBST(HAVE_ZPOOL_VDEV_ATTACH, 5) AC_MSG_NOTICE([5 params])]
+)
+
+
+dnl Checking for parameters of zpool_add
+
+AC_MSG_NOTICE([Checking zpool_add parameters])
+
+AC_LINK_IFELSE([AC_LANG_PROGRAM(
+		[#include <libzfs.h>],
+		[
+			zpool_add(NULL, NULL, 0);
+		]
+	)],
+	[AC_SUBST(HAVE_ZPOOL_ADD, 3) AC_MSG_NOTICE([3 params])],
+	[AC_SUBST(HAVE_ZPOOL_ADD, 2) AC_MSG_NOTICE([2 params])]
 )
 
 

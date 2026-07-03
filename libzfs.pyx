@@ -3219,7 +3219,10 @@ cdef class ZFSPool(object):
         cdef boolean_t ashift = check_ashift
 
         with nogil:
-            ret = libzfs.zpool_add(self.handle, vd.nvlist.handle, ashift)
+            IF HAVE_ZPOOL_ADD == 3:
+                ret = libzfs.zpool_add(self.handle, vd.nvlist.handle, ashift)
+            ELSE:
+                ret = libzfs.zpool_add(self.handle, vd.nvlist.handle)
 
         if ret != 0:
             raise self.root.get_error()
