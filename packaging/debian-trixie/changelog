@@ -1,5 +1,5 @@
-python3-libzfs (2.2.1-1trixie) trixie; urgency=medium
+python3-libzfs (2.3.0-1trixie) trixie; urgency=medium
 
-  * Trixie (Proxmox 9) packaging
+  * Cython 3 / ZFS 2.3 compatibility + multi-platform build
 
- -- Rachit Hans <rhans@45drives.com>  Tue, 01 Jul 2026 10:00:00 -0300
+ -- Rachit Hans <rhans@45drives.com>  Thu, 03 Jul 2026 10:00:00 -0300
