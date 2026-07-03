@@ -19,7 +19,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
 %build
 echo "Starting build process..."
-pip3 install Cython==0.29.35
+pip3 install 'Cython==3.0.12'
 ./configure --prefix=/usr
 make
 

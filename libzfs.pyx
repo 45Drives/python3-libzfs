@@ -13,7 +13,7 @@ import threading
 cimport libzfs
 cimport zfs
 cimport nvpair
-from datetime import datetime
+from datetime import datetime, timezone
 from libc.errno cimport errno
 from libc.string cimport memset, strncpy
 from libc.stdlib cimport realloc
@@ -366,7 +366,7 @@ class DiffRecord(object):
         timestamp, cmd, typ, rest = raw.split(maxsplit=3)
         paths = rest.split('->', maxsplit=2)
         self.raw = raw
-        self.timestamp = datetime.utcfromtimestamp(float(timestamp))
+        self.timestamp = datetime.fromtimestamp(float(timestamp), tz=timezone.utc)
         self.cmd = DiffRecordType(cmd)
         self.type = DiffFileType(typ)
         self.path = paths[0].strip()
@@ -2627,12 +2627,12 @@ cdef class ZPoolScrub(object):
     property start_time:
         def __get__(self):
             if self.stats != NULL:
-                return datetime.utcfromtimestamp(self.stats.pss_start_time)
+                return datetime.fromtimestamp(self.stats.pss_start_time, tz=timezone.utc)
 
     property end_time:
         def __get__(self):
             if self.stats != NULL and self.state != ScanState.SCANNING:
-                return datetime.utcfromtimestamp(self.stats.pss_end_time)
+                return datetime.fromtimestamp(self.stats.pss_end_time, tz=timezone.utc)
 
     property bytes_to_scan:
         def __get__(self):
@@ -2669,7 +2669,7 @@ cdef class ZPoolScrub(object):
     property pause:
         def __get__(self):
             if self.state == ScanState.SCANNING and self.stats.pss_pass_scrub_pause != 0:
-                return datetime.utcfromtimestamp(self.stats.pss_pass_scrub_pause)
+                return datetime.fromtimestamp(self.stats.pss_pass_scrub_pause, tz=timezone.utc)
 
     property errors:
         def __get__(self):

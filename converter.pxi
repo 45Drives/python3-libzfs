@@ -34,7 +34,7 @@ class ZfsConverter(object):
             return None
 
         if self.typ == datetime:
-            return datetime.utcfromtimestamp(int(value))
+            return datetime.fromtimestamp(int(value), tz=timezone.utc)
 
     def to_property(self, value):
         if self.readonly:

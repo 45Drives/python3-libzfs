@@ -1,0 +1,5 @@
+python3-libzfs (2.3.0-1bookworm) bookworm; urgency=medium
+
+  * Cython 3 / ZFS 2.2 + 2.3 compatibility
+
+ -- Rachit Hans <rhans@45drives.com>  Thu, 03 Jul 2026 10:00:00 -0300

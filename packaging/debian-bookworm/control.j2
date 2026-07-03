@@ -2,13 +2,13 @@ Source: {{ name }}
 Section: utils
 Priority: optional
 Maintainer: {{ author }}
-Build-Depends: debhelper-compat (= 13), python3-all, python3-setuptools, dh-python, cython3, libzfslinux-dev | libzfs-dev, python3-dev
-Standards-Version: 4.7.0
+Build-Depends: debhelper-compat (= 13), python3-all, python3-setuptools, dh-python
+Standards-Version: 4.6.2
 X-Python3-Version: >= 3.6
 Homepage: {{ git_url }}
 Vcs-Git: {{ git_url }}
 
 Package: {{ name }}
 Architecture: {{ architecture.debian }}
-Depends: {{ dependencies.debian_trixie | join(',') }}
+Depends: {{ dependencies.ubuntu_common | join(',') }}
 Description: {{ description }}
