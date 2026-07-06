@@ -1,3 +1,9 @@
+python3-libzfs (2.4.0-4jammy) jammy; urgency=medium
+
+  * building package to support zfs2.4
+
+ -- Rachit Hans <rhans@45drives.com>  Mon, 06 Jul 2026 14:51:15 -0300
+
 python3-libzfs (2.4.0-3jammy) jammy; urgency=medium
 
   * building package to support zfs2.4

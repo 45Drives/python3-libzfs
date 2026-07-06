@@ -1,14 +1,14 @@
-python3-libzfs (2.4.0-3bookworm) bookworm; urgency=medium
+python3-libzfs (2.4.0-4bookworm) bookworm; urgency=medium
 
   * building package to support zfs2.4
 
- -- Rachit Hans <rhans@45drives.com>  Mon, 06 Jul 2026 14:33:49 -0300
+ -- Rachit Hans <rhans@45drives.com>  Mon, 06 Jul 2026 14:51:15 -0300
 
-python3-libzfs (2.4.0-2bookworm) bookworm; urgency=medium
+python3-libzfs (2.4.0-2.4.0bookworm) bookworm; urgency=medium
 
   * ZFS 2.4 compatibility for Debian Trixie (PVE 9.2
 
- -- Rachit Hans <rhans@45drives.com>  Mon, 06 Jul 2026 11:02:48 -0300
+ -- Rachit Hans <rhans@45drives.com>  Mon, 06 Jul 2026 11:01:13 -0300
 
 python3-libzfs (2.4.0-1bookworm) bookworm; urgency=medium
 

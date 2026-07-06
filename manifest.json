@@ -4,7 +4,7 @@
     "title": "Py-libzfs",
     "description": "python libzfs",
     "version": "2.4.0",
-    "build_number": "3",
+    "build_number": "4",
     "stable": false,
     "author": "Brett Kelly <bkelly@45drives.com>",
     "git_url": "https://github.com/45Drives/python3-libzfs",
@@ -70,7 +70,7 @@
     "changelog": {
         "urgency": "medium",
         "version": "2.4.0",
-        "build_number": "3",
+        "build_number": "4",
         "date": null,
         "packager": "Brett Kelly <bkelly@45drives.com>",
         "changes": []
