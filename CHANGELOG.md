@@ -1,3 +1,3 @@
-## Py-libzfs 2.4.0-2
+## Py-libzfs 2.4.0-3
 
-* ZFS 2.4 compatibility for Debian Trixie (PVE 9.2
+* building package to support zfs2.4
