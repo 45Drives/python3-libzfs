@@ -1,3 +1,3 @@
-## Py-libzfs 2.2.1-7
+## Py-libzfs 2.4.0-1
 
-* build el8 package for zfs 2.2 support
+* building test package for trixie
