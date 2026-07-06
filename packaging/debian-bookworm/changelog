@@ -1,3 +1,9 @@
+python3-libzfs (2.4.0-2bookworm) bookworm; urgency=medium
+
+  * ZFS 2.4 compatibility for Debian Trixie (PVE 9.2
+
+ -- Rachit Hans <rhans@45drives.com>  Mon, 06 Jul 2026 11:02:48 -0300
+
 python3-libzfs (2.4.0-1bookworm) bookworm; urgency=medium
 
   * building test package for trixie
