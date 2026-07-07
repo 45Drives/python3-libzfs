@@ -1,3 +1,3 @@
-## Py-libzfs 2.4.1-1
+## Py-libzfs 2.4.1-2
 
-* building package to support zfs2.4
+* testing package  build processto support zfs2.4
