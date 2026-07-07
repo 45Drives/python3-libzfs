@@ -1,3 +1,9 @@
+python3-libzfs (2.4.1-1trixie) trixie; urgency=medium
+
+  * building package to support zfs2.4
+
+ -- Rachit Hans <rhans@45drives.com>  Tue, 07 Jul 2026 07:13:46 -0300
+
 python3-libzfs (2.4.0-4trixie) trixie; urgency=medium
 
   * building package to support zfs2.4
