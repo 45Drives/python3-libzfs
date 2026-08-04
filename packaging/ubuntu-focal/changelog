@@ -1,3 +1,9 @@
+python3-libzfs (2.4.1-4focal) focal; urgency=medium
+
+  * Push new release to stable
+
+ -- Jordan Keough <jkeough@45drives.com>  Tue, 04 Aug 2026 09:33:48 -0300
+
 python3-libzfs (2.4.1-3focal) focal; urgency=medium
 
   * Testing package for zfsutils dep name change

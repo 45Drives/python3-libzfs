@@ -1,3 +1,3 @@
-## Py-libzfs 2.4.1-3
+## Py-libzfs 2.4.1-4
 
-* Testing package for zfsutils dep name change
+* Push new release to stable
