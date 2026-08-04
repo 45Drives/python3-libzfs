@@ -19,8 +19,8 @@
     },
     "dependencies": {
         "ubuntu_common": [
-            "zfsutils-linux (>= 2.2)",
-            "zfsutils-linux (<< 2.3)"
+            "zfsutils (>= 2.2)",
+            "zfsutils (<< 2.3)"
         ],
         "debian_trixie": [
             "zfsutils-linux (>= 2.4)",
