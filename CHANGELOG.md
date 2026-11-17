@@ -1,3 +1,3 @@
-## Py-libzfs 2.4.1-4
+## Py-libzfs 2.4.1-5
 
-* Push new release to stable
+* update install deps for el and ubuntu

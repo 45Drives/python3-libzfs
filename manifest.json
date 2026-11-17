@@ -4,7 +4,7 @@
     "title": "Py-libzfs",
     "description": "python libzfs",
     "version": "2.4.1",
-    "build_number": "4",
+    "build_number": "5",
     "stable": true,
     "author": "Brett Kelly <bkelly@45drives.com>",
     "git_url": "https://github.com/45Drives/python3-libzfs",
@@ -19,16 +19,16 @@
     },
     "dependencies": {
         "ubuntu_common": [
-            "zfsutils (>= 2.2)",
-            "zfsutils (<< 2.3)"
+            "zfsutils (>= 2.4)",
+            "zfsutils (<< 2.5)"
         ],
         "debian_trixie": [
             "zfsutils-linux (>= 2.4)",
             "zfsutils-linux (<< 2.5)"
         ],
         "rocky_common": [
-            "zfs >= 2.2",
-            "zfs < 2.3"
+            "zfs >= 2.4",
+            "zfs < 2.5"
         ]
     },
     "builds": [
@@ -70,7 +70,7 @@
     "changelog": {
         "urgency": "medium",
         "version": "2.4.1",
-        "build_number": "4",
+        "build_number": "5",
         "date": null,
         "packager": "Brett Kelly <bkelly@45drives.com>",
         "changes": []

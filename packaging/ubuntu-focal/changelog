@@ -1,3 +1,9 @@
+python3-libzfs (2.4.1-5focal) focal; urgency=medium
+
+  * update install deps for el and ubuntu
+
+ -- Brett Kelly <bkelly@45drives.com>  Tue, 17 Nov 2026 12:46:40 -0400
+
 python3-libzfs (2.4.1-4focal) focal; urgency=medium
 
   * Push new release to stable
