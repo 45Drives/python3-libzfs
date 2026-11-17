@@ -34,11 +34,6 @@
     "builds": [
         {
             "group": "ubuntu",
-            "os_name": "ubuntu-focal",
-            "image": "ci.cr.45d.io/ci/zfs/ubuntu-focal:1"
-        },
-        {
-            "group": "ubuntu",
             "os_name": "ubuntu-jammy",
             "image": "ci.cr.45d.io/ci/zfs/ubuntu-jammy:1"
         },
